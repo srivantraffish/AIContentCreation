@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSprinklrBearerToken } from "@/lib/lib/sprinklr-auth";
 
 export const runtime = "nodejs";
 
@@ -11,11 +12,22 @@ function cleanUrl(url?: string) {
 }
 
 export async function POST(req: Request) {
-  const token = process.env.SPRINKLR_BEARER_TOKEN;
+  //const token = process.env.SPRINKLR_BEARER_TOKEN;
   const apiKey = process.env.SPRINKLR_API_KEY;
 
-  if (!token || !apiKey) {
-    return NextResponse.json({ error: "Missing Sprinklr credentials" }, { status: 500 });
+  // if (!token || !apiKey) {
+  //   return NextResponse.json({ error: "Missing Sprinklr credentials" }, { status: 500 });
+
+  if (!apiKey) {
+    return NextResponse.json({ error: "Missing SPRINKLR_API_KEY" }, { status: 500 });
+  }
+
+  let token: string;
+  try {
+    token = await getSprinklrBearerToken();
+  } catch (e: unknown) {
+    const details = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: "Failed to load Sprinklr token", details }, { status: 500 });
   }
 
   const body = await req.json().catch(() => ({}));
