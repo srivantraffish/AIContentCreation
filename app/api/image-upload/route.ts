@@ -81,8 +81,8 @@ export async function POST(req: Request) {
   const expiryTime = Number(process.env.SPRINKLR_EXPIRY_TIME || 2208988800000);
 
   const customFields = {
-    c_6985fd14c7447f30fed3e65d: ["123"],
-    c_6985fd71c7447f30fed52c73: ["Product"],
+    _c_6985fd14c7447f30fed3e65d: ["123"],
+    _c_6985fd71c7447f30fed52c73: ["Final Product"],
   } as Record<string, string[]>;
 
   const shareConfig: any = { shareLevel };
@@ -123,7 +123,8 @@ export async function POST(req: Request) {
   }
 
   const createData = await createResp.json();
-  const assetId = createData?.id || createData?.data?.id || createData?.asset?.id;
+  const createdAsset = Array.isArray(createData) ? createData[0] : createData;
+  const assetId = createdAsset?.id || createdAsset?.data?.id || createdAsset?.asset?.id;
 
   if (!assetId) {
     return NextResponse.json(
@@ -134,8 +135,10 @@ export async function POST(req: Request) {
 
   const updatePayload = {
     clientCustomProperties: customFields,
-    campaignId: "2001048_12",
+    partnerCustomFields: customFields,
   };
+
+  await new Promise((resolve) => setTimeout(resolve, 3000));
 
   const updateResp = await fetch(`https://api3.sprinklr.com/${env}/api/v1/sam/${assetId}`, {
     method: "PUT",
@@ -148,12 +151,14 @@ export async function POST(req: Request) {
     body: JSON.stringify(updatePayload),
   });
 
+  const updateText = await updateResp.text();
+  const updateData = updateText ? JSON.parse(updateText) : {};
+
   if (!updateResp.ok) {
-    const txt = await updateResp.text();
     return NextResponse.json(
       {
         error: `Sprinklr asset update failed: ${updateResp.status}`,
-        details: txt,
+        details: updateText,
         uploadedContentId,
         assetId,
       },
@@ -161,14 +166,14 @@ export async function POST(req: Request) {
     );
   }
 
-  const updateData = await updateResp.json().catch(() => ({}));
-
   return NextResponse.json(
     {
       uploadedContentId,
       assetId,
       asset: createData,
+      updateStatus: updateResp.status,
       update: updateData,
+      updateRaw: updateText,
     },
     { status: 200 }
   );
