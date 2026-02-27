@@ -6,6 +6,16 @@ export const runtime = "nodejs";
 
 const DEFAULT_ENV = "prod3";
 
+function getFilenameFromUrl(url: string) {
+  try {
+    const u = new URL(url);
+    const name = u.pathname.split("/").pop();
+    return name && name.includes(".") ? name : "generated-image.png";
+  } catch {
+    return "generated-image.png";
+  }
+}
+
 function parseList(value?: string | null) {
   if (!value) return [];
   return value
@@ -15,23 +25,11 @@ function parseList(value?: string | null) {
 }
 
 export async function POST(req: Request) {
-  //const token = process.env.SPRINKLR_BEARER_TOKEN;
   const apiKey = process.env.SPRINKLR_API_KEY;
   const env = process.env.SPRINKLR_ENV || DEFAULT_ENV;
 
-  // if (!token || !apiKey) {
-  //   return NextResponse.json({ error: "Missing Sprinklr credentials" }, { status: 500 });
-  // }
   if (!apiKey) {
     return NextResponse.json({ error: "Missing SPRINKLR_API_KEY" }, { status: 500 });
-  }
-
-  let token: string;
-  try {
-    token = await getSprinklrBearerToken();
-  } catch (e: unknown) {
-    const details = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ error: "Failed to load Sprinklr token", details }, { status: 500 });
   }
 
   const body = await req.json().catch(() => ({}));
@@ -43,30 +41,58 @@ export async function POST(req: Request) {
 
   const uploadTrackerId = `gen_${crypto.randomUUID()}`;
 
-  const importUrl = `https://api3.sprinklr.com/${env}/api/v1/sam/importUrl?importType=IMAGE&url=${encodeURIComponent(
-    imageUrl
-  )}&uploadTrackerId=${encodeURIComponent(uploadTrackerId)}`;
-
-  const importResp = await fetch(importUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Key: apiKey,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-  });
-
-  if (!importResp.ok) {
-    const txt = await importResp.text();
-    return NextResponse.json({ error: `Sprinklr import failed: ${importResp.status}`, details: txt }, { status: 500 });
+  let imgResp: Response;
+  try {
+    imgResp = await fetch(imageUrl);
+  } catch (e: unknown) {
+    const details = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: "Failed to fetch generated image", details }, { status: 500 });
   }
 
-  const importData = await importResp.json();
-  const uploadedContentId = importData?.data?.id || importData?.id;
+  if (!imgResp.ok) {
+    const txt = await imgResp.text();
+    return NextResponse.json({ error: `Image fetch failed: ${imgResp.status}`, details: txt }, { status: 500 });
+  }
+
+  const arrayBuf = await imgResp.arrayBuffer();
+  const contentType = imgResp.headers.get("content-type") || "image/png";
+  const filename = getFilenameFromUrl(imageUrl);
+
+  const form = new FormData();
+  form.append("file", new Blob([arrayBuf], { type: contentType }), filename);
+
+  const uploadUrl = `https://api3.sprinklr.com/${env}/api/v1/sam/upload?contentType=IMAGE&uploadTrackerId=${encodeURIComponent(
+    uploadTrackerId
+  )}`;
+
+  let uploadToken: string;
+  try {
+    uploadToken = await getSprinklrBearerToken();
+  } catch (e: unknown) {
+    const details = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: "Failed to load Sprinklr token for upload", details }, { status: 500 });
+  }
+
+  const uploadResp = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${uploadToken}`,
+      key: apiKey,
+      Accept: "application/json",
+    },
+    body: form,
+  });
+
+  if (!uploadResp.ok) {
+    const txt = await uploadResp.text();
+    return NextResponse.json({ error: `Sprinklr upload failed: ${uploadResp.status}`, details: txt }, { status: 500 });
+  }
+
+  const uploadData = await uploadResp.json();
+  const uploadedContentId = uploadData?.id;
 
   if (!uploadedContentId) {
-    return NextResponse.json({ error: "Import succeeded but no id returned", importData }, { status: 500 });
+    return NextResponse.json({ error: "Upload succeeded but no id returned", uploadData }, { status: 500 });
   }
 
   const assetStatus = (process.env.SPRINKLR_ASSET_STATUS || "DRAFT").toUpperCase();
@@ -80,9 +106,10 @@ export async function POST(req: Request) {
   const availableAfterTime = Number(process.env.SPRINKLR_AVAILABLE_AFTER_TIME || now);
   const expiryTime = Number(process.env.SPRINKLR_EXPIRY_TIME || 2208988800000);
 
+  const customFieldTarget = process.env.SPRINKLR_CUSTOM_FIELDS_TARGET || "clientCustomProperties";
   const customFields = {
-    _c_6985fd14c7447f30fed3e65d: ["123"],
-    _c_6985fd71c7447f30fed52c73: ["Final Product"],
+    _c_6985fd71c7447f30fed52c73: ["final"],
+    c_6985fd14c7447f30fed3e65d: ["123"],
   } as Record<string, string[]>;
 
   const shareConfig: any = { shareLevel };
@@ -103,10 +130,24 @@ export async function POST(req: Request) {
   if (tags.length) payload.tags = tags;
   if (campaignIds.length) payload.campaignIds = campaignIds;
 
+  if (customFieldTarget === "partnerCustomFields") payload.partnerCustomFields = customFields;
+  else payload.clientCustomProperties = customFields;
+
+  let createToken: string;
+  try {
+    createToken = await getSprinklrBearerToken();
+  } catch (e: unknown) {
+    const details = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json(
+      { error: "Failed to load Sprinklr token for asset create", details, uploadedContentId },
+      { status: 500 }
+    );
+  }
+
   const createResp = await fetch(`https://api3.sprinklr.com/${env}/api/v1/sam`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${createToken}`,
       Key: apiKey,
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -123,57 +164,10 @@ export async function POST(req: Request) {
   }
 
   const createData = await createResp.json();
-  const createdAsset = Array.isArray(createData) ? createData[0] : createData;
-  const assetId = createdAsset?.id || createdAsset?.data?.id || createdAsset?.asset?.id;
-
-  if (!assetId) {
-    return NextResponse.json(
-      { error: "Asset create succeeded but no asset id returned", uploadedContentId, asset: createData },
-      { status: 500 }
-    );
-  }
-
-  const updatePayload = {
-    clientCustomProperties: customFields,
-    partnerCustomFields: customFields,
-  };
-
-  await new Promise((resolve) => setTimeout(resolve, 3000));
-
-  const updateResp = await fetch(`https://api3.sprinklr.com/${env}/api/v1/sam/${assetId}`, {
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Key: apiKey,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(updatePayload),
-  });
-
-  const updateText = await updateResp.text();
-  const updateData = updateText ? JSON.parse(updateText) : {};
-
-  if (!updateResp.ok) {
-    return NextResponse.json(
-      {
-        error: `Sprinklr asset update failed: ${updateResp.status}`,
-        details: updateText,
-        uploadedContentId,
-        assetId,
-      },
-      { status: 500 }
-    );
-  }
-
   return NextResponse.json(
     {
       uploadedContentId,
-      assetId,
       asset: createData,
-      updateStatus: updateResp.status,
-      update: updateData,
-      updateRaw: updateText,
     },
     { status: 200 }
   );

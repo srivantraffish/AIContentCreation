@@ -1,71 +1,90 @@
+// src/lib/sprinklr-auth.ts
+import { kv } from "@vercel/kv";
+
 const DEFAULT_ENV = "prod3";
-const TOKEN_REFRESH_BUFFER_MS = 60_000;
 
-type CachedToken = {
-  value: string;
-  expiresAt: number;
-};
-
-let cachedToken: CachedToken | null = null;
+// KV key where we store the rotating refresh token
+const KV_REFRESH_TOKEN_KEY = "sprinklr:refresh_token";
 
 function getTokenEndpoint() {
   const env = process.env.SPRINKLR_ENV || DEFAULT_ENV;
   return `https://api3.sprinklr.com/${env}/oauth/token`;
 }
 
-function getCachedToken() {
-  if (!cachedToken) return null;
-  if (Date.now() >= cachedToken.expiresAt) {
-    cachedToken = null;
-    return null;
-  }
-  return cachedToken.value;
+async function getStoredRefreshToken(): Promise<string> {
+  // 1) Prefer KV (latest rotated token)
+  const kvToken = await kv.get<string>(KV_REFRESH_TOKEN_KEY);
+  if (kvToken && kvToken.trim()) return kvToken.trim();
+
+  // 2) Fallback to env only for first bootstrap
+  const envToken = process.env.SPRINKLR_REFRESH_TOKEN || "";
+  return envToken.trim();
 }
 
-export async function getSprinklrBearerToken() {
+async function setStoredRefreshToken(token: string) {
+  const t = token.trim();
+  if (!t) return;
+  await kv.set(KV_REFRESH_TOKEN_KEY, t);
+}
+
+export async function getSprinklrBearerToken(): Promise<string> {
+  // If you ever want to bypass OAuth completely:
   const staticToken = process.env.SPRINKLR_BEARER_TOKEN;
-  if (staticToken) return staticToken;
+  if (staticToken?.trim()) return staticToken.trim();
 
-  const validCachedToken = getCachedToken();
-  if (validCachedToken) return validCachedToken;
-
-  const clientId = process.env.SPRINKLR_API_KEY;
-  const clientSecret = process.env.SPRINKLR_API_SECRET;
+  const clientId =
+    process.env.SPRINKLR_OAUTH_CLIENT_ID || process.env.SPRINKLR_API_KEY;
+  const clientSecret =
+    process.env.SPRINKLR_OAUTH_CLIENT_SECRET || process.env.SPRINKLR_API_SECRET;
 
   if (!clientId || !clientSecret) {
-    throw new Error("Missing Sprinklr auth config. Set SPRINKLR_BEARER_TOKEN or (SPRINKLR_API_KEY + SPRINKLR_API_SECRET).");
+    throw new Error(
+      "Missing Sprinklr OAuth config. Set SPRINKLR_OAUTH_CLIENT_ID + SPRINKLR_OAUTH_CLIENT_SECRET (or SPRINKLR_API_KEY + SPRINKLR_API_SECRET)."
+    );
   }
 
+  const refreshToken = await getStoredRefreshToken();
+
+  // IMPORTANT: Sprinklr token endpoint expects x-www-form-urlencoded
   const body = new URLSearchParams({
-    grant_type: "client_credentials",
+    grant_type: refreshToken ? "refresh_token" : "client_credentials",
     client_id: clientId,
     client_secret: clientSecret,
   });
 
+  if (refreshToken) {
+    body.set("refresh_token", refreshToken);
+  }
+
   const response = await fetch(getTokenEndpoint(), {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
       Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
     },
     body,
+    cache: "no-store",
   });
 
+  const text = await response.text();
+
   if (!response.ok) {
-    const details = await response.text();
-    throw new Error(`Sprinklr token fetch failed: ${response.status}. ${details}`);
+    // Show raw response body so you can see exactly what Sprinklr returns
+    throw new Error(`Sprinklr token fetch failed: ${response.status}. ${text}`);
   }
 
-  const data = await response.json();
+  const data = JSON.parse(text);
   const accessToken = String(data?.access_token || "").trim();
-  const expiresInSeconds = Number(data?.expires_in || 3600);
+  const nextRefreshToken = String(data?.refresh_token || "").trim();
 
   if (!accessToken) {
-    throw new Error("Sprinklr token fetch did not return access_token");
+    throw new Error(`Sprinklr token fetch did not return access_token. Body: ${text}`);
   }
 
-  const expiresAt = Date.now() + Math.max(0, expiresInSeconds * 1000 - TOKEN_REFRESH_BUFFER_MS);
-  cachedToken = { value: accessToken, expiresAt };
+  // If Sprinklr rotates refresh tokens, persist the new one
+  if (nextRefreshToken && nextRefreshToken !== refreshToken) {
+    await setStoredRefreshToken(nextRefreshToken);
+  }
 
   return accessToken;
 }
