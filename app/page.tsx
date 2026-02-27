@@ -1,18 +1,74 @@
 "use client";
 import { useState } from "react";
 
-const DEFAULT_PROMPT = `Create a high-end, photorealistic, production-ready commercial product image using the attached product image as the base.
-
-Preserve the product’s exact shape, proportions, materials, and real-world color accuracy. Do not change the product design.
-
-If a style reference image is provided: apply the reference style only (camera angle, framing, lighting softness, contrast, color grading, and background treatment). Do not copy branding or objects from the reference.
-
-If a logo is provided: place the logo naturally on the product or its label/packaging where it physically makes sense. The logo must be sharp, undistorted, and interact realistically with the surface (printed/embossed/engraved as appropriate).
-
-Do not add any extra graphics, text, symbols, patterns, props, or watermarks.
-Do not distort the product or logo.
-Avoid cartoon/illustration/CGI/mockup-style results.
-No blur, no low resolution, no stylization.`;
+const DEFAULT_PROMPT = `Create a photorealistic, production-ready lifestyle apparel advertisement image using the attached t-shirt image as the base garment.
+ 
+Reference Ad Usage
+Use the attached reference advertisement image as a strict visual blueprint for:
+ 
+Overall composition and framing
+ 
+Camera angle and distance
+ 
+Subject pose and body crop
+ 
+Lighting direction, softness, and contrast
+ 
+Outdoor environment, depth of field, and background treatment
+ 
+Natural, candid lifestyle photography aesthetic
+ 
+Replicate the visual structure and scene layout of the reference as closely as possible, while replacing only the garment and branding with the provided assets.
+ 
+Subject & Scene
+ 
+A real human model wearing the t-shirt naturally, matching the reference’s pose, posture, and framing (upper-body lifestyle shot, not a studio pose).
+ 
+Outdoor daylight setting with soft, diffused natural light.
+ 
+Shallow to moderate depth of field, realistic environmental background (no studio backdrops).
+ 
+Emotion and movement should feel candid and authentic, not posed.
+ 
+Garment Realism
+ 
+The t-shirt must look physically worn on the body, with natural fabric tension, folds, and gravity.
+ 
+Fabric texture should be clearly visible: premium cotton weave, subtle wrinkles, realistic shading.
+ 
+Accurate color reproduction matching the provided garment image.
+ 
+Logo Application
+ 
+Place the attached brand logo on the chest area of the t-shirt, centered horizontally.
+ 
+Logo scale should be realistic and proportional (approximately 8–12% of chest width).
+ 
+The logo must appear professionally printed or embroidered, with sharp edges and correct perspective.
+ 
+Logo must conform naturally to fabric folds without distortion or floating artifacts.
+ 
+Photographic Quality
+ 
+Ultra-realistic commercial photography quality.
+ 
+Natural color grading consistent with the reference image.
+ 
+Clean exposure, no blown highlights, no muddy shadows.
+ 
+Strict Constraints
+ 
+Do NOT add any text, slogans, graphics, frames, overlays, or watermarks.
+ 
+Do NOT change or reinterpret the logo design.
+ 
+Do NOT produce flat-lay, mannequin, ghost, catalog, or studio mockup images.
+ 
+Do NOT stylize, illustrate, cartoonize, or CGI-render the image.
+ 
+No blur, no low resolution, no artificial filters.
+ 
+The final image should be indistinguishable from a real, high-end fashion lifestyle advertisement suitable for e-commerce hero banners and brand marketing campaigns.`;
 
 export default function Page() {
   const [baseMode, setBaseMode] = useState<"upload" | "search">("upload");

@@ -3,8 +3,8 @@ import { getSprinklrBearerToken } from "@/lib/lib/sprinklr-auth";
 
 export const runtime = "nodejs";
 
-const SPRINKLR_ENDPOINT = "https://api3.sprinklr.com/prod3/api/v1/sam/search";
 const CLIENT_ID = "2001048";
+const DEFAULT_ENV = "prod3";
 
 function cleanUrl(url?: string) {
   if (!url) return null;
@@ -12,11 +12,8 @@ function cleanUrl(url?: string) {
 }
 
 export async function POST(req: Request) {
-  //const token = process.env.SPRINKLR_BEARER_TOKEN;
-  const apiKey = process.env.SPRINKLR_API_KEY;
-
-  // if (!token || !apiKey) {
-  //   return NextResponse.json({ error: "Missing Sprinklr credentials" }, { status: 500 });
+  const apiKey = process.env.SPRINKLR_API_KEY?.trim();
+  const env = process.env.SPRINKLR_ENV?.trim() || DEFAULT_ENV;
 
   if (!apiKey) {
     return NextResponse.json({ error: "Missing SPRINKLR_API_KEY" }, { status: 500 });
@@ -32,7 +29,6 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const keyword = String(body?.keyword || "").trim();
-
   if (!keyword) return NextResponse.json({ error: "Keyword is required" }, { status: 400 });
 
   const payload = {
@@ -45,7 +41,7 @@ export async function POST(req: Request) {
     rows: 50,
   };
 
-  const r = await fetch(SPRINKLR_ENDPOINT, {
+  const r = await fetch(`https://api3.sprinklr.com/${env}/api/v1/sam/search`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -58,7 +54,10 @@ export async function POST(req: Request) {
 
   if (!r.ok) {
     const txt = await r.text();
-    return NextResponse.json({ error: `Sprinklr search failed: ${r.status}`, details: txt }, { status: 500 });
+    return NextResponse.json(
+      { error: `Sprinklr search failed: ${r.status}`, details: txt },
+      { status: 500 }
+    );
   }
 
   const data = await r.json();
