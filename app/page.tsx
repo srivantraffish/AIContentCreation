@@ -1,20 +1,173 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-const DEFAULT_PROMPT = `Create a high-end, photorealistic, production-ready commercial product image using the attached product image as the base.
+const INDUSTRIES = [
+  "Beauty / Skincare",
+  "Tech",
+  "Food & Beverage",
+  "Fitness",
+  "Luxury",
+  "Fashion",
+] as const;
 
-Preserve the product’s exact shape, proportions, materials, and real-world color accuracy. Do not change the product design.
+const INDUSTRY_VISUAL_STYLE: Record<(typeof INDUSTRIES)[number], string> = {
+  "Beauty / Skincare":
+    "Soft diffused lighting, smooth gradients, elegant minimal styling, clean surfaces, refined textures, subtle glow, premium lifestyle environment.",
+  Tech: "Minimal modern setting, clean surfaces, cool tones, subtle reflections, futuristic lighting accents, sleek environment.",
+  "Food & Beverage":
+    "Appetizing lighting, rich textures, shallow depth of field, warm tones, freshness cues, natural ingredients styling.",
+  Fitness: "Dynamic lighting, high contrast, energetic framing, bold shadows, action-oriented atmosphere.",
+  Luxury:
+    "Dramatic lighting, deep shadows, rich materials like marble or metal, cinematic elegance, dark premium environment.",
+  Fashion:
+    "Editorial lighting, confident composition, modern aesthetic, premium studio or lifestyle setting.",
+};
 
-If a style reference image is provided: apply the reference style only (camera angle, framing, lighting softness, contrast, color grading, and background treatment). Do not copy branding or objects from the reference.
+const MARKETING_OBJECTIVES = [
+  "Brand Awareness – Increase recognition and recall of the brand.",
+  "Reach – Maximize the number of people who see the ad.",
+  "Traffic – Drive users to a website, app, or landing page.",
+  "Engagement – Generate interactions (likes, comments, shares, video views).",
+  "Lead Generation – Collect contact information or inquiries.",
+  "App Promotion – Drive app installs or in-app actions.",
+  "Sales / Conversions – Drive purchases or other defined conversion actions.",
+  "Customer Retention / Loyalty – Encourage repeat purchases or re-engagement.",
+  "Custom objective…",
+] as const;
 
-If a logo is provided: place the logo naturally on the product or its label/packaging where it physically makes sense. The logo must be sharp, undistorted, and interact realistically with the surface (printed/embossed/engraved as appropriate).
+const LAYOUT_MODES = ["1:1", "4:5", "9:16", "16:9", "1.91:1"] as const;
 
-Do not add any extra graphics, text, symbols, patterns, props, or watermarks.
-Do not distort the product or logo.
-Avoid cartoon/illustration/CGI/mockup-style results.
-No blur, no low resolution, no stylization.`;
+const DEFAULT_TONE = "premium, clean, contemporary";
+
+function buildPrompt(params: {
+  marketingObjective: string;
+  industry: (typeof INDUSTRIES)[number];
+  brandDescription?: string;
+  tone?: string;
+  layoutMode: (typeof LAYOUT_MODES)[number];
+  brandPrimaryHex?: string;
+  brandAccentHex?: string;
+}) {
+  const brandDescription =
+    params.brandDescription?.trim() ||
+    `modern, credible brand in the ${params.industry} space`;
+  const tone = params.tone?.trim() || DEFAULT_TONE;
+  const primaryHex = params.brandPrimaryHex?.trim() || "";
+  const accentHex = params.brandAccentHex?.trim() || "";
+
+  return `Create a high-end commercial advertising image featuring the EXACT product from the provided product image as the clear hero.
+ 
+The product must remain unchanged:
+- Preserve original shape, proportions, materials, label design, and structure.
+- Do not redesign, modify, duplicate, or reinterpret the product.
+- Only one primary product unless naturally part of packaging.
+ 
+Marketing Objective: ${params.marketingObjective}
+ 
+Visually communicate this objective through lighting, composition, scale, and mood — not through heavy text.
+ 
+Industry: ${params.industry}
+Brand description (optional): ${brandDescription}
+Tone (optional): ${tone}
+ 
+--------------------------------------------------
+ 
+INDUSTRY VISUAL DIRECTION:
+${INDUSTRY_VISUAL_STYLE[params.industry]}
+ 
+Ensure the environment feels authentic to the industry and aligned with the marketing objective.
+ 
+--------------------------------------------------
+ 
+REFERENCE IMAGE USAGE RULES:
+ 
+Use the reference image strictly for:
+- Composition balance
+- Framing
+- Lighting direction
+- Depth structure
+ 
+Do NOT copy:
+- Objects
+- Text
+- Props
+- People
+- Specific scenery elements
+ 
+Create a new scene inspired by its structure only.
+ 
+--------------------------------------------------
+ 
+COMPOSITION & AD STRUCTURE:
+ 
+- Strong visual hierarchy: product first, environment supporting.
+- Clear focal point.
+- Professional commercial photography quality.
+- Intentional negative space for headline placement.
+- Layout optimized for ${params.layoutMode} format.
+- Safe margins for cropping in digital advertising.
+- Balanced framing appropriate for paid ad usage.
+ 
+--------------------------------------------------
+ 
+OBJECTIVE-BASED VISUAL TRANSLATION:
+ 
+If objective is:
+- Launch → dramatic lighting, reveal energy, spotlight effect.
+- Discount/Offer → bold contrast, energetic framing.
+- Premium positioning → minimal composition, refined lighting.
+- Lifestyle branding → natural contextual environment.
+- Awareness → emotionally engaging scene with clear product focus.
+ 
+Adapt visual storytelling accordingly.
+ 
+--------------------------------------------------
+ 
+LOGO INTEGRATION:
+ 
+Integrate the provided logo naturally and realistically:
+- On packaging
+- Embossed
+- Subtle corner lockup
+- Label integration
+ 
+The logo must align with lighting and perspective of the scene.
+ 
+--------------------------------------------------
+ 
+COLOR & FINISH:
+ 
+Use brand colors subtly if provided: ${primaryHex || "N/A"}, ${accentHex || "N/A"}
+ 
+Professional commercial color grading aligned with ${tone}
+ 
+--------------------------------------------------
+ 
+FINAL OUTPUT REQUIREMENTS:
+ 
+Ultra-realistic
+High resolution
+Clean composition
+Natural shadows
+Realistic reflections
+No visual artifacts
+Premium advertising finish
+Suitable for paid digital campaigns`;
+}
 
 export default function Page() {
+  const [industry, setIndustry] = useState<(typeof INDUSTRIES)[number]>(INDUSTRIES[0]);
+  const [marketingObjectivePreset, setMarketingObjectivePreset] = useState<string>(
+    MARKETING_OBJECTIVES[0]
+  );
+  const [marketingObjectiveCustom, setMarketingObjectiveCustom] = useState<string>("");
+  const [brandDescription, setBrandDescription] = useState<string>("");
+  const [tone, setTone] = useState<string>(DEFAULT_TONE);
+  const [layoutMode, setLayoutMode] = useState<(typeof LAYOUT_MODES)[number]>(LAYOUT_MODES[0]);
+  const [brandPrimaryHex, setBrandPrimaryHex] = useState<string>("#000000");
+  const [brandAccentHex, setBrandAccentHex] = useState<string>("#ffffff");
+  const [promptEdited, setPromptEdited] = useState(false);
+
   const [baseMode, setBaseMode] = useState<"upload" | "search">("upload");
   const [base, setBase] = useState<File | null>(null);
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
@@ -25,7 +178,36 @@ export default function Page() {
   const [logo, setLogo] = useState<File | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const effectiveMarketingObjective = useMemo(() => {
+    if (marketingObjectivePreset === "Custom objective…") {
+      return marketingObjectiveCustom.trim() || "Custom objective";
+    }
+    return marketingObjectivePreset;
+  }, [marketingObjectiveCustom, marketingObjectivePreset]);
+
+  const generatedPrompt = useMemo(
+    () =>
+      buildPrompt({
+        marketingObjective: effectiveMarketingObjective,
+        industry,
+        brandDescription,
+        tone,
+        layoutMode,
+        brandPrimaryHex,
+        brandAccentHex,
+      }),
+    [
+      brandAccentHex,
+      brandDescription,
+      brandPrimaryHex,
+      effectiveMarketingObjective,
+      industry,
+      layoutMode,
+      tone,
+    ]
+  );
+
+  const [prompt, setPrompt] = useState(generatedPrompt);
   const [width, setWidth] = useState(1024);
   const [height, setHeight] = useState(1024);
 
@@ -51,6 +233,10 @@ export default function Page() {
   const [logoResults, setLogoResults] = useState<
     Array<{ id: string; name: string; mediaUrl: string; previewUrl?: string }>
   >([]);
+
+  useEffect(() => {
+    if (!promptEdited) setPrompt(generatedPrompt);
+  }, [generatedPrompt, promptEdited]);
 
   async function runSearch(
     kind: "base" | "reference" | "logo",
@@ -427,6 +613,133 @@ export default function Page() {
         </div>
       )}
 
+      <div style={{ marginTop: 16, padding: 12, border: "1px solid #e5e5e5", borderRadius: 8 }}>
+        <div style={{ fontWeight: 800, marginBottom: 10 }}>Prompt builder</div>
+        <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+          <label style={{ display: "grid", gap: 6 }}>
+            Industry
+            <select
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value as (typeof INDUSTRIES)[number])}
+            >
+              {INDUSTRIES.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            Marketing objective
+            <select
+              value={marketingObjectivePreset}
+              onChange={(e) => setMarketingObjectivePreset(e.target.value)}
+            >
+              {MARKETING_OBJECTIVES.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          {marketingObjectivePreset === "Custom objective…" && (
+            <label style={{ display: "grid", gap: 6 }}>
+              Custom objective
+              <input
+                type="text"
+                placeholder="Enter your objective"
+                value={marketingObjectiveCustom}
+                onChange={(e) => setMarketingObjectiveCustom(e.target.value)}
+              />
+            </label>
+          )}
+
+          <label style={{ display: "grid", gap: 6 }}>
+            Brand description (optional)
+            <input
+              type="text"
+              placeholder={`modern, credible brand in the ${industry} space`}
+              value={brandDescription}
+              onChange={(e) => setBrandDescription(e.target.value)}
+            />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            Tone (optional)
+            <input type="text" value={tone} onChange={(e) => setTone(e.target.value)} />
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            Layout mode
+            <select value={layoutMode} onChange={(e) => setLayoutMode(e.target.value as any)}>
+              {LAYOUT_MODES.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            Brand primary color
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="color"
+                value={brandPrimaryHex}
+                onChange={(e) => setBrandPrimaryHex(e.target.value)}
+              />
+              <input
+                type="text"
+                value={brandPrimaryHex}
+                onChange={(e) => setBrandPrimaryHex(e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </div>
+          </label>
+
+          <label style={{ display: "grid", gap: 6 }}>
+            Brand accent color
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="color"
+                value={brandAccentHex}
+                onChange={(e) => setBrandAccentHex(e.target.value)}
+              />
+              <input
+                type="text"
+                value={brandAccentHex}
+                onChange={(e) => setBrandAccentHex(e.target.value)}
+                style={{ flex: 1 }}
+              />
+            </div>
+          </label>
+        </div>
+
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 700, marginBottom: 6 }}>Industry visual style</div>
+          <div style={{ color: "#444" }}>{INDUSTRY_VISUAL_STYLE[industry]}</div>
+        </div>
+
+        <div style={{ marginTop: 12, display: "flex", gap: 12, alignItems: "center" }}>
+          <button
+            onClick={() => {
+              setPrompt(generatedPrompt);
+              setPromptEdited(false);
+            }}
+            style={{ padding: "6px 10px", cursor: "pointer" }}
+          >
+            Regenerate prompt
+          </button>
+          {promptEdited && (
+            <div style={{ color: "#555" }}>
+              Prompt is in manual edit mode and will not auto-update.
+            </div>
+          )}
+        </div>
+      </div>
+
       <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "center" }}>
         <label>
           Width{" "}
@@ -461,7 +774,10 @@ export default function Page() {
         <div style={{ fontWeight: 800, marginBottom: 6 }}>Prompt</div>
         <textarea
           value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
+          onChange={(e) => {
+            setPrompt(e.target.value);
+            setPromptEdited(true);
+          }}
           rows={12}
           style={{ width: "100%", padding: 10 }}
         />
