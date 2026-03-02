@@ -1,10 +1,19 @@
 // src/lib/sprinklr-auth.ts
-import { kv } from "@vercel/kv";
 
 const DEFAULT_ENV = "prod3";
 
 // KV key where we store the rotating refresh token
 const KV_REFRESH_TOKEN_KEY = "sprinklr:refresh_token";
+
+async function getKvClient() {
+  if (process.env.VERCEL !== "1") return null;
+  try {
+    const mod = await import("@vercel/kv");
+    return mod.kv;
+  } catch {
+    return null;
+  }
+}
 
 function getTokenEndpoint() {
   const env = process.env.SPRINKLR_ENV || DEFAULT_ENV;
@@ -13,8 +22,11 @@ function getTokenEndpoint() {
 
 async function getStoredRefreshToken(): Promise<string> {
   // 1) Prefer KV (latest rotated token)
-  const kvToken = await kv.get<string>(KV_REFRESH_TOKEN_KEY);
-  if (kvToken && kvToken.trim()) return kvToken.trim();
+  const kvClient = await getKvClient();
+  if (kvClient) {
+    const kvToken = await kvClient.get<string>(KV_REFRESH_TOKEN_KEY);
+    if (kvToken && kvToken.trim()) return kvToken.trim();
+  }
 
   // 2) Fallback to env only for first bootstrap
   const envToken = process.env.SPRINKLR_REFRESH_TOKEN || "";
@@ -24,7 +36,9 @@ async function getStoredRefreshToken(): Promise<string> {
 async function setStoredRefreshToken(token: string) {
   const t = token.trim();
   if (!t) return;
-  await kv.set(KV_REFRESH_TOKEN_KEY, t);
+  const kvClient = await getKvClient();
+  if (!kvClient) return;
+  await kvClient.set(KV_REFRESH_TOKEN_KEY, t);
 }
 
 export async function getSprinklrBearerToken(): Promise<string> {
