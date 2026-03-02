@@ -24,20 +24,25 @@ const INDUSTRY_VISUAL_STYLE: Record<(typeof INDUSTRIES)[number], string> = {
 };
 
 const MARKETING_OBJECTIVES = [
-  "Brand Awareness – Increase recognition and recall of the brand.",
-  "Reach – Maximize the number of people who see the ad.",
-  "Traffic – Drive users to a website, app, or landing page.",
-  "Engagement – Generate interactions (likes, comments, shares, video views).",
-  "Lead Generation – Collect contact information or inquiries.",
-  "App Promotion – Drive app installs or in-app actions.",
-  "Sales / Conversions – Drive purchases or other defined conversion actions.",
-  "Customer Retention / Loyalty – Encourage repeat purchases or re-engagement.",
+  "Launch",
+  "Discount/Offer",
+  "Premium Positioning",
+  "Lifestyle Branding",
+  "Awareness",
   "Custom objective…",
 ] as const;
 
 const LAYOUT_MODES = ["1:1", "4:5", "9:16", "16:9", "1.91:1"] as const;
 
 const DEFAULT_TONE = "premium, clean, contemporary";
+
+const OBJECTIVE_TRANSLATIONS: Record<string, string> = {
+  Launch: "Launch → dramatic lighting consistent with reference lighting logic.",
+  "Discount/Offer": "Discount/Offer → contrast adjustments while preserving original layout structure.",
+  "Premium Positioning": "Premium positioning → refined lighting without altering composition.",
+  "Lifestyle Branding": "Lifestyle branding → contextual realism while maintaining structural alignment.",
+  Awareness: "Awareness → emotional tone layered onto the same visual framework.",
+};
 
 function buildPrompt(params: {
   marketingObjective: string;
@@ -54,97 +59,153 @@ function buildPrompt(params: {
   const tone = params.tone?.trim() || DEFAULT_TONE;
   const primaryHex = params.brandPrimaryHex?.trim() || "";
   const accentHex = params.brandAccentHex?.trim() || "";
+  const objectiveTranslation =
+    OBJECTIVE_TRANSLATIONS[params.marketingObjective] ||
+    `Apply objective-driven visual translation aligned with "${params.marketingObjective}".`;
 
   return `Create a high-end commercial advertising image featuring the EXACT product from the provided product image as the clear hero.
- 
+
 The product must remain unchanged:
-- Preserve original shape, proportions, materials, label design, and structure.
-- Do not redesign, modify, duplicate, or reinterpret the product.
-- Only one primary product unless naturally part of packaging.
- 
+
+Preserve original shape, proportions, materials, label design, and structure.
+
+Do not redesign, modify, duplicate, reinterpret, stylize, or enhance the product in any way.
+
+The product must visually match the reference product with near-photographic accuracy.
+
+Only one primary product unless naturally part of packaging.
+
 Marketing Objective: ${params.marketingObjective}
- 
+
 Visually communicate this objective through lighting, composition, scale, and mood — not through heavy text.
- 
+
 Industry: ${params.industry}
 Brand description (optional): ${brandDescription}
 Tone (optional): ${tone}
- 
---------------------------------------------------
- 
+
 INDUSTRY VISUAL DIRECTION:
 ${INDUSTRY_VISUAL_STYLE[params.industry]}
- 
+
 Ensure the environment feels authentic to the industry and aligned with the marketing objective.
- 
---------------------------------------------------
- 
+
 REFERENCE IMAGE USAGE RULES:
- 
+
+The generated image must closely replicate the reference image’s:
+
+Camera angle
+
+Perspective
+
+Focal length feel
+
+Framing
+
+Subject placement
+
+Spatial proportions
+
+Lighting direction and intensity
+
+Shadow behavior
+
+Depth of field
+
+Background structure
+
+Overall composition geometry
+
+Treat the reference image as a structural blueprint.
+
 Use the reference image strictly for:
-- Composition balance
-- Framing
-- Lighting direction
-- Depth structure
- 
+
+Composition balance
+
+Framing
+
+Lighting direction
+
+Depth structure
+
+Do NOT alter:
+
+The core layout logic
+
+The product’s visual characteristics
+
+Relative scale relationships
+
 Do NOT copy:
-- Objects
-- Text
-- Props
-- People
-- Specific scenery elements
- 
-Create a new scene inspired by its structure only.
- 
---------------------------------------------------
- 
+
+Objects (unless part of the original product image)
+
+Text
+
+Props
+
+People
+
+Specific identifiable scenery elements
+
+Create a scene that mirrors the structural DNA of the reference image while remaining legally distinct in environmental details.
+
 COMPOSITION & AD STRUCTURE:
- 
-- Strong visual hierarchy: product first, environment supporting.
-- Clear focal point.
-- Professional commercial photography quality.
-- Intentional negative space for headline placement.
-- Layout optimized for ${params.layoutMode} format.
-- Safe margins for cropping in digital advertising.
-- Balanced framing appropriate for paid ad usage.
- 
---------------------------------------------------
- 
+
+Strong visual hierarchy: product first, environment supporting.
+
+Clear focal point identical in emphasis to reference.
+
+Professional commercial photography quality.
+
+Intentional negative space for headline placement (matching reference positioning).
+
+Layout optimized for ${params.layoutMode} format.
+
+Safe margins for cropping in digital advertising.
+
+Balanced framing appropriate for paid ad usage.
+
+Maintain near-identical compositional ratios and subject placement as reference.
+
 OBJECTIVE-BASED VISUAL TRANSLATION:
- 
-If objective is:
-- Launch → dramatic lighting, reveal energy, spotlight effect.
-- Discount/Offer → bold contrast, energetic framing.
-- Premium positioning → minimal composition, refined lighting.
-- Lifestyle branding → natural contextual environment.
-- Awareness → emotionally engaging scene with clear product focus.
- 
-Adapt visual storytelling accordingly.
- 
---------------------------------------------------
- 
+
+${objectiveTranslation}
+
+Adapt visual storytelling without changing structural composition.
+
 LOGO INTEGRATION:
- 
+
 Integrate the provided logo naturally and realistically:
-- On packaging
-- Embossed
-- Subtle corner lockup
-- Label integration
- 
-The logo must align with lighting and perspective of the scene.
- 
---------------------------------------------------
- 
+
+On packaging
+
+Embossed
+
+Subtle corner lockup
+
+Label integration
+
+The logo must align precisely with lighting, perspective, and surface geometry of the scene.
+
 COLOR & FINISH:
- 
+
 Use brand colors subtly if provided: ${primaryHex || "N/A"}, ${accentHex || "N/A"}
- 
+
+Match the reference image’s:
+
+Color temperature
+
+Contrast profile
+
+Exposure balance
+
+Highlight rolloff
+
+Shadow density
+
 Professional commercial color grading aligned with ${tone}
- 
---------------------------------------------------
- 
+
 FINAL OUTPUT REQUIREMENTS:
- 
+
 Ultra-realistic
 High resolution
 Clean composition
@@ -152,6 +213,7 @@ Natural shadows
 Realistic reflections
 No visual artifacts
 Premium advertising finish
+Maximum structural similarity to the reference image
 Suitable for paid digital campaigns`;
 }
 
