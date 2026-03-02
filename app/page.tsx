@@ -8,7 +8,11 @@ const INDUSTRIES = [
   "Fitness",
   "Luxury",
   "Fashion",
+  "Custom",
 ] as const;
+
+const DEFAULT_INDUSTRY_VISUAL_STYLE =
+  "Professional commercial studio environment, clean modern aesthetic, soft controlled lighting, realistic shadows and reflections, minimal but intentional background styling, premium advertising photography, subtle depth, balanced composition, distraction-free environment.";
 
 const INDUSTRY_VISUAL_STYLE: Record<(typeof INDUSTRIES)[number], string> = {
   "Beauty / Skincare":
@@ -21,23 +25,34 @@ const INDUSTRY_VISUAL_STYLE: Record<(typeof INDUSTRIES)[number], string> = {
     "Dramatic lighting, deep shadows, rich materials like marble or metal, cinematic elegance, dark premium environment.",
   Fashion:
     "Editorial lighting, confident composition, modern aesthetic, premium studio or lifestyle setting.",
+  Custom: DEFAULT_INDUSTRY_VISUAL_STYLE,
 };
 
 const MARKETING_OBJECTIVES = [
-  "Brand Awareness – Increase recognition and recall of the brand.",
-  "Reach – Maximize the number of people who see the ad.",
-  "Traffic – Drive users to a website, app, or landing page.",
-  "Engagement – Generate interactions (likes, comments, shares, video views).",
-  "Lead Generation – Collect contact information or inquiries.",
-  "App Promotion – Drive app installs or in-app actions.",
-  "Sales / Conversions – Drive purchases or other defined conversion actions.",
-  "Customer Retention / Loyalty – Encourage repeat purchases or re-engagement.",
+  "Launch",
+  "Discount/Offer",
+<<<<<<< Updated upstream
+  "Premium positioning",
+  "Lifestyle branding",
+=======
+  "Premium Positioning",
+  "Lifestyle Branding",
+>>>>>>> Stashed changes
+  "Awareness",
   "Custom objective…",
 ] as const;
 
 const LAYOUT_MODES = ["1:1", "4:5", "9:16", "16:9", "1.91:1"] as const;
 
 const DEFAULT_TONE = "premium, clean, contemporary";
+
+const OBJECTIVE_TRANSLATIONS: Record<string, string> = {
+  Launch: "Launch → dramatic lighting consistent with reference lighting logic.",
+  "Discount/Offer": "Discount/Offer → contrast adjustments while preserving original layout structure.",
+  "Premium Positioning": "Premium positioning → refined lighting without altering composition.",
+  "Lifestyle Branding": "Lifestyle branding → contextual realism while maintaining structural alignment.",
+  Awareness: "Awareness → emotional tone layered onto the same visual framework.",
+};
 
 function buildPrompt(params: {
   marketingObjective: string;
@@ -51,119 +66,302 @@ function buildPrompt(params: {
   const brandDescription =
     params.brandDescription?.trim() ||
     `modern, credible brand in the ${params.industry} space`;
+
   const tone = params.tone?.trim() || DEFAULT_TONE;
   const primaryHex = params.brandPrimaryHex?.trim() || "";
   const accentHex = params.brandAccentHex?.trim() || "";
+  const objectiveTranslations: Record<string, string> = {
+    Launch: "Launch → dramatic lighting consistent with reference lighting logic.",
+    "Discount/Offer": "Discount/Offer → contrast adjustments while preserving original layout structure.",
+    "Premium positioning": "Premium positioning → refined lighting without altering composition.",
+    "Lifestyle branding": "Lifestyle branding → contextual realism while maintaining structural alignment.",
+    Awareness: "Awareness → emotional tone layered onto the same visual framework.",
+  };
+  const objectiveLine =
+    objectiveTranslations[params.marketingObjective] ||
+    `Custom objective → ${params.marketingObjective}`;
 
+<<<<<<< Updated upstream
   return `Create a high-end commercial advertising image featuring the EXACT product from the provided product image as the clear hero.
- 
+
 The product must remain unchanged:
-- Preserve original shape, proportions, materials, label design, and structure.
-- Do not redesign, modify, duplicate, or reinterpret the product.
-- Only one primary product unless naturally part of packaging.
- 
+
+Preserve original shape, proportions, materials, label design, and structure.
+
+Do not redesign, modify, duplicate, reinterpret, stylize, or enhance the product in any way.
+
+The product must visually match the reference product with near-photographic accuracy.
+
+Only one primary product unless naturally part of packaging.
+
 Marketing Objective: ${params.marketingObjective}
- 
+
 Visually communicate this objective through lighting, composition, scale, and mood — not through heavy text.
- 
+
 Industry: ${params.industry}
 Brand description (optional): ${brandDescription}
 Tone (optional): ${tone}
- 
---------------------------------------------------
- 
+
 INDUSTRY VISUAL DIRECTION:
 ${INDUSTRY_VISUAL_STYLE[params.industry]}
- 
+
 Ensure the environment feels authentic to the industry and aligned with the marketing objective.
- 
---------------------------------------------------
- 
+
 REFERENCE IMAGE USAGE RULES:
- 
+
+The generated image must closely replicate the reference image’s:
+
+Camera angle
+
+Perspective
+
+Focal length feel
+
+Framing
+
+Subject placement
+
+Spatial proportions
+
+Lighting direction and intensity
+
+Shadow behavior
+
+Depth of field
+
+Background structure
+
+Overall composition geometry
+
+Treat the reference image as a structural blueprint.
+
 Use the reference image strictly for:
-- Composition balance
-- Framing
-- Lighting direction
-- Depth structure
- 
+
+Composition balance
+
+Framing
+
+Lighting direction
+
+Depth structure
+
+Do NOT alter:
+
+The core layout logic
+
+The product’s visual characteristics
+
+Relative scale relationships
+
 Do NOT copy:
-- Objects
-- Text
-- Props
-- People
-- Specific scenery elements
- 
-Create a new scene inspired by its structure only.
- 
---------------------------------------------------
- 
+
+Objects (unless part of the original product image)
+
+Text
+
+Props
+
+People
+
+Specific identifiable scenery elements
+
+Create a scene that mirrors the structural DNA of the reference image while remaining legally distinct in environmental details.
+
 COMPOSITION & AD STRUCTURE:
- 
-- Strong visual hierarchy: product first, environment supporting.
-- Clear focal point.
-- Professional commercial photography quality.
-- Intentional negative space for headline placement.
-- Layout optimized for ${params.layoutMode} format.
-- Safe margins for cropping in digital advertising.
-- Balanced framing appropriate for paid ad usage.
- 
---------------------------------------------------
- 
+
+Strong visual hierarchy: product first, environment supporting.
+
+Clear focal point identical in emphasis to reference.
+
+Professional commercial photography quality.
+
+Intentional negative space for headline placement (matching reference positioning).
+
+Layout optimized for ${params.layoutMode} format.
+
+Safe margins for cropping in digital advertising.
+
+Balanced framing appropriate for paid ad usage.
+
+Maintain near-identical compositional ratios and subject placement as reference.
+
 OBJECTIVE-BASED VISUAL TRANSLATION:
- 
-If objective is:
-- Launch → dramatic lighting, reveal energy, spotlight effect.
-- Discount/Offer → bold contrast, energetic framing.
-- Premium positioning → minimal composition, refined lighting.
-- Lifestyle branding → natural contextual environment.
-- Awareness → emotionally engaging scene with clear product focus.
- 
-Adapt visual storytelling accordingly.
- 
---------------------------------------------------
- 
+
+${objectiveLine}
+
+Adapt visual storytelling without changing structural composition.
+
 LOGO INTEGRATION:
- 
+
 Integrate the provided logo naturally and realistically:
-- On packaging
-- Embossed
-- Subtle corner lockup
-- Label integration
- 
-The logo must align with lighting and perspective of the scene.
- 
---------------------------------------------------
- 
+
+On packaging
+
+Embossed
+
+Subtle corner lockup
+
+Label integration
+
+The logo must align precisely with lighting, perspective, and surface geometry of the scene.
+
 COLOR & FINISH:
- 
+
 Use brand colors subtly if provided: ${primaryHex || "N/A"}, ${accentHex || "N/A"}
- 
+
+Match the reference image’s:
+
+Color temperature
+
+Contrast profile
+
+Exposure balance
+
+Highlight rolloff
+
+Shadow density
+
 Professional commercial color grading aligned with ${tone}
+
+FINAL OUTPUT REQUIREMENTS:
+
+=======
+  const objectiveTranslation =
+    OBJECTIVE_TRANSLATIONS[params.marketingObjective] ||
+    `Apply objective-driven visual translation aligned with "${params.marketingObjective}".`;
+
+  // (kept for future use if you want to inject this line somewhere)
+  void objectiveTranslation;
+
+  const industryVisualStyle =
+    INDUSTRY_VISUAL_STYLE[params.industry] || DEFAULT_INDUSTRY_VISUAL_STYLE;
+
+  return `Use the provided reference image as the PRIMARY structural blueprint.
+ 
+The generated image must closely replicate the reference image’s:
+ 
+- Camera angle
+- Perspective
+- Framing
+- Subject placement
+- Spatial proportions
+- Depth of field
+- Lighting direction
+- Shadow behavior
+- Background structure
+- Overall composition geometry
+ 
+Maintain near-identical compositional ratios and layout balance.
+ 
+Recreate the same scene structure shown in the reference image, replacing only the subject.
+ 
+Do not alter the core layout logic.
  
 --------------------------------------------------
  
-FINAL OUTPUT REQUIREMENTS:
+Now replace the original subject with the EXACT product from the provided product image.
  
+The product must remain unchanged:
+- Preserve original shape, proportions, materials, label design, and structure.
+- Do not redesign, stylize, reinterpret, enhance, or duplicate the product.
+- Only one primary product unless naturally part of packaging.
+ 
+The product must occupy the same compositional role, scale, and visual emphasis as the subject in the reference image.
+ 
+--------------------------------------------------
+ 
+Marketing Objective: {{MARKETING_OBJECTIVE}}
+ 
+Visually communicate this objective through lighting intensity, atmosphere, and styling — WITHOUT altering the structural composition derived from the reference image.
+ 
+--------------------------------------------------
+ 
+Industry: {{INDUSTRY}}
+ 
+Brand Description (optional): {{BRAND_DESCRIPTION}}
+ 
+Tone (optional): {{TONE_OR_DEFAULT_PREMIUM}}
+ 
+--------------------------------------------------
+ 
+Industry Visual Direction:
+${industryVisualStyle}
+ 
+Ensure styling, materials, and environment details reflect the industry while respecting the reference composition.
+ 
+Do not allow industry styling to override layout structure.
+ 
+--------------------------------------------------
+ 
+Layout Format:
+{{LAYOUT_MODE}} (e.g., 1:1, 4:5, 16:9)
+ 
+Maintain safe margins for digital advertising placement.
+ 
+--------------------------------------------------
+ 
+Logo Integration:
+ 
+Integrate the provided logo naturally within the structural constraints of the reference layout.
+ 
+Logo must align with scene lighting, surface geometry, and perspective.
+Avoid floating or pasted appearance.
+ 
+--------------------------------------------------
+ 
+Color & Finish:
+ 
+If provided, use brand colors subtly:
+Primary: {{BRAND_PRIMARY_HEX}}
+Accent: {{BRAND_ACCENT_HEX}}
+ 
+Match the reference image’s:
+- Color temperature
+- Contrast profile
+- Exposure balance
+- Highlight rolloff
+- Shadow density
+ 
+Professional commercial color grading aligned with {{TONE_OR_DEFAULT_PREMIUM}}.
+ 
+--------------------------------------------------
+ 
+Final Output Requirements:
+ 
+>>>>>>> Stashed changes
 Ultra-realistic
 High resolution
+Structurally aligned with reference image
+Accurate product representation
+Premium commercial photography quality
 Clean composition
+<<<<<<< Updated upstream
 Natural shadows
 Realistic reflections
 No visual artifacts
 Premium advertising finish
+Maximum structural similarity to the reference image
 Suitable for paid digital campaigns`;
+=======
+Natural shadows and reflections
+Suitable for paid digital advertising`;
+>>>>>>> Stashed changes
 }
 
 export default function Page() {
-  const [industry, setIndustry] = useState<(typeof INDUSTRIES)[number]>(INDUSTRIES[0]);
-  const [marketingObjectivePreset, setMarketingObjectivePreset] = useState<string>(
-    MARKETING_OBJECTIVES[0]
+  const [industry, setIndustry] = useState<(typeof INDUSTRIES)[number]>(
+    INDUSTRIES[0]
   );
-  const [marketingObjectiveCustom, setMarketingObjectiveCustom] = useState<string>("");
+  const [marketingObjectivePreset, setMarketingObjectivePreset] = useState<
+    string
+  >(MARKETING_OBJECTIVES[0]);
+  const [marketingObjectiveCustom, setMarketingObjectiveCustom] =
+    useState<string>("");
   const [brandDescription, setBrandDescription] = useState<string>("");
   const [tone, setTone] = useState<string>(DEFAULT_TONE);
-  const [layoutMode, setLayoutMode] = useState<(typeof LAYOUT_MODES)[number]>(LAYOUT_MODES[0]);
+  const [layoutMode, setLayoutMode] = useState<(typeof LAYOUT_MODES)[number]>(
+    LAYOUT_MODES[0]
+  );
   const [brandPrimaryHex, setBrandPrimaryHex] = useState<string>("#000000");
   const [brandAccentHex, setBrandAccentHex] = useState<string>("#ffffff");
   const [promptEdited, setPromptEdited] = useState(false);
@@ -171,12 +369,17 @@ export default function Page() {
   const [baseMode, setBaseMode] = useState<"upload" | "search">("upload");
   const [base, setBase] = useState<File | null>(null);
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
-  const [referenceMode, setReferenceMode] = useState<"upload" | "search">("upload");
+  const [referenceMode, setReferenceMode] = useState<"upload" | "search">(
+    "upload"
+  );
   const [reference, setReference] = useState<File | null>(null);
   const [referenceUrl, setReferenceUrl] = useState<string | null>(null);
   const [logoMode, setLogoMode] = useState<"upload" | "search">("upload");
   const [logo, setLogo] = useState<File | null>(null);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // NEW: optional custom industry name shown only when "Custom" is selected
+  const [industryCustom, setIndustryCustom] = useState<string>("");
 
   const effectiveMarketingObjective = useMemo(() => {
     if (marketingObjectivePreset === "Custom objective…") {
@@ -190,7 +393,11 @@ export default function Page() {
       buildPrompt({
         marketingObjective: effectiveMarketingObjective,
         industry,
-        brandDescription,
+        brandDescription:
+          industry === "Custom" && industryCustom.trim()
+            ? `${brandDescription}`.trim() ||
+              `modern, credible brand in the ${industryCustom.trim()} space`
+            : brandDescription,
         tone,
         layoutMode,
         brandPrimaryHex,
@@ -202,6 +409,7 @@ export default function Page() {
       brandPrimaryHex,
       effectiveMarketingObjective,
       industry,
+      industryCustom,
       layoutMode,
       tone,
     ]
@@ -242,7 +450,9 @@ export default function Page() {
     kind: "base" | "reference" | "logo",
     keyword: string,
     setSearching: (v: boolean) => void,
-    setResults: (v: Array<{ id: string; name: string; mediaUrl: string; previewUrl?: string }>) => void,
+    setResults: (
+      v: Array<{ id: string; name: string; mediaUrl: string; previewUrl?: string }>
+    ) => void,
     setSelectedUrl: (v: string | null) => void
   ) {
     setError(null);
@@ -313,7 +523,11 @@ export default function Page() {
       const up = await fetch("/api/image-upload", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageUrl: sampleUrl, name: "Generated Image", description: "Generated by BFL" }),
+        body: JSON.stringify({
+          imageUrl: sampleUrl,
+          name: "Generated Image",
+          description: "Generated by BFL",
+        }),
       });
       const upData = await up.json();
       if (!up.ok) setUploadError(upData?.error || "Upload failed");
@@ -326,16 +540,32 @@ export default function Page() {
   }
 
   return (
-    <main style={{ maxWidth: 920, margin: "40px auto", padding: 16, fontFamily: "system-ui" }}>
+    <main
+      style={{
+        maxWidth: 920,
+        margin: "40px auto",
+        padding: 16,
+        fontFamily: "system-ui",
+      }}
+    >
       <h1 style={{ fontSize: 28, marginBottom: 6 }}>BFL Image Generator</h1>
       <div style={{ color: "#555", marginBottom: 16 }}>
-        Upload a base product image or search Sprinklr, plus optional reference and logo. Paste your prompt and generate.
+        Upload a base product image or search Sprinklr, plus optional reference and
+        logo. Paste your prompt and generate.
       </div>
-      {uploading && <div style={{ marginBottom: 10, color: "#444" }}>Uploading generated image to Sprinklr...</div>}
-      {uploadError && <div style={{ marginBottom: 10, color: "#b00020" }}>{uploadError}</div>}
+
+      {uploading && (
+        <div style={{ marginBottom: 10, color: "#444" }}>
+          Uploading generated image to Sprinklr...
+        </div>
+      )}
+      {uploadError && (
+        <div style={{ marginBottom: 10, color: "#b00020" }}>{uploadError}</div>
+      )}
       {uploadResult && (
         <div style={{ marginBottom: 10, color: "#0a7a2a" }}>
-          Uploaded to Sprinklr. Content ID: {String(uploadResult?.uploadedContentId || "")}
+          Uploaded to Sprinklr. Content ID:{" "}
+          {String(uploadResult?.uploadedContentId || "")}
         </div>
       )}
 
@@ -371,7 +601,11 @@ export default function Page() {
         <div>
           <div style={{ fontWeight: 700 }}>Base product image *</div>
           {baseMode === "upload" ? (
-            <input type="file" accept="image/*" onChange={(e) => setBase(e.target.files?.[0] || null)} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setBase(e.target.files?.[0] || null)}
+            />
           ) : (
             <div style={{ display: "flex", gap: 8 }}>
               <input
@@ -382,9 +616,7 @@ export default function Page() {
                 style={{ flex: 1 }}
               />
               <button
-                onClick={() =>
-                  runSearch("base", baseKeyword, setBaseSearching, setBaseResults, setBaseUrl)
-                }
+                onClick={() => runSearch("base", baseKeyword, setBaseSearching, setBaseResults, setBaseUrl)}
                 disabled={baseSearching}
                 style={{ padding: "6px 10px" }}
               >
@@ -422,8 +654,13 @@ export default function Page() {
               Search
             </label>
           </div>
+
           {referenceMode === "upload" ? (
-            <input type="file" accept="image/*" onChange={(e) => setReference(e.target.files?.[0] || null)} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setReference(e.target.files?.[0] || null)}
+            />
           ) : (
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <input
@@ -435,13 +672,7 @@ export default function Page() {
               />
               <button
                 onClick={() =>
-                  runSearch(
-                    "reference",
-                    referenceKeyword,
-                    setReferenceSearching,
-                    setReferenceResults,
-                    setReferenceUrl
-                  )
+                  runSearch("reference", referenceKeyword, setReferenceSearching, setReferenceResults, setReferenceUrl)
                 }
                 disabled={referenceSearching}
                 style={{ padding: "6px 10px" }}
@@ -480,8 +711,13 @@ export default function Page() {
               Search
             </label>
           </div>
+
           {logoMode === "upload" ? (
-            <input type="file" accept="image/*" onChange={(e) => setLogo(e.target.files?.[0] || null)} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setLogo(e.target.files?.[0] || null)}
+            />
           ) : (
             <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
               <input
@@ -492,9 +728,7 @@ export default function Page() {
                 style={{ flex: 1 }}
               />
               <button
-                onClick={() =>
-                  runSearch("logo", logoKeyword, setLogoSearching, setLogoResults, setLogoUrl)
-                }
+                onClick={() => runSearch("logo", logoKeyword, setLogoSearching, setLogoResults, setLogoUrl)}
                 disabled={logoSearching}
                 style={{ padding: "6px 10px" }}
               >
@@ -512,14 +746,23 @@ export default function Page() {
             {baseResults.map((asset) => (
               <button
                 key={asset.id}
-                onClick={() => setBaseUrl(asset.mediaUrl)}
+                onClick={() =>
+                  setBaseUrl((prev) => (prev === asset.mediaUrl ? null : asset.mediaUrl))
+                }
                 style={{
-                  border: baseUrl === asset.mediaUrl ? "2px solid #111" : "1px solid #ddd",
+                  border: baseUrl === asset.mediaUrl ? "2px solid #0a7a2a" : "1px solid #ddd",
                   padding: 6,
                   cursor: "pointer",
                   background: "white",
+                  position: "relative",
                 }}
               >
+                <input
+                  type="checkbox"
+                  checked={baseUrl === asset.mediaUrl}
+                  readOnly
+                  style={{ position: "absolute", top: 8, left: 8 }}
+                />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={asset.previewUrl || asset.mediaUrl}
@@ -530,14 +773,6 @@ export default function Page() {
               </button>
             ))}
           </div>
-        </div>
-      )}
-
-      {baseMode === "search" && baseUrl && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>Selected base image</div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={baseUrl} alt="Selected base" style={{ width: "100%", border: "1px solid #ddd" }} />
         </div>
       )}
 
@@ -548,14 +783,23 @@ export default function Page() {
             {referenceResults.map((asset) => (
               <button
                 key={asset.id}
-                onClick={() => setReferenceUrl(asset.mediaUrl)}
+                onClick={() =>
+                  setReferenceUrl((prev) => (prev === asset.mediaUrl ? null : asset.mediaUrl))
+                }
                 style={{
-                  border: referenceUrl === asset.mediaUrl ? "2px solid #111" : "1px solid #ddd",
+                  border: referenceUrl === asset.mediaUrl ? "2px solid #0a7a2a" : "1px solid #ddd",
                   padding: 6,
                   cursor: "pointer",
                   background: "white",
+                  position: "relative",
                 }}
               >
+                <input
+                  type="checkbox"
+                  checked={referenceUrl === asset.mediaUrl}
+                  readOnly
+                  style={{ position: "absolute", top: 8, left: 8 }}
+                />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={asset.previewUrl || asset.mediaUrl}
@@ -569,14 +813,21 @@ export default function Page() {
         </div>
       )}
 
+<<<<<<< Updated upstream
+=======
       {referenceMode === "search" && referenceUrl && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Selected reference image</div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={referenceUrl} alt="Selected reference" style={{ width: "100%", border: "1px solid #ddd" }} />
+          <img
+            src={referenceUrl}
+            alt="Selected reference"
+            style={{ width: "100%", border: "1px solid #ddd" }}
+          />
         </div>
       )}
 
+>>>>>>> Stashed changes
       {logoMode === "search" && logoResults.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Logo search results</div>
@@ -584,14 +835,23 @@ export default function Page() {
             {logoResults.map((asset) => (
               <button
                 key={asset.id}
-                onClick={() => setLogoUrl(asset.mediaUrl)}
+                onClick={() =>
+                  setLogoUrl((prev) => (prev === asset.mediaUrl ? null : asset.mediaUrl))
+                }
                 style={{
-                  border: logoUrl === asset.mediaUrl ? "2px solid #111" : "1px solid #ddd",
+                  border: logoUrl === asset.mediaUrl ? "2px solid #0a7a2a" : "1px solid #ddd",
                   padding: 6,
                   cursor: "pointer",
                   background: "white",
+                  position: "relative",
                 }}
               >
+                <input
+                  type="checkbox"
+                  checked={logoUrl === asset.mediaUrl}
+                  readOnly
+                  style={{ position: "absolute", top: 8, left: 8 }}
+                />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={asset.previewUrl || asset.mediaUrl}
@@ -605,23 +865,13 @@ export default function Page() {
         </div>
       )}
 
-      {logoMode === "search" && logoUrl && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 800, marginBottom: 6 }}>Selected logo image</div>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={logoUrl} alt="Selected logo" style={{ width: "100%", border: "1px solid #ddd" }} />
-        </div>
-      )}
-
       <div style={{ marginTop: 16, padding: 12, border: "1px solid #e5e5e5", borderRadius: 8 }}>
         <div style={{ fontWeight: 800, marginBottom: 10 }}>Prompt builder</div>
+
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
           <label style={{ display: "grid", gap: 6 }}>
             Industry
-            <select
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value as (typeof INDUSTRIES)[number])}
-            >
+            <select value={industry} onChange={(e) => setIndustry(e.target.value as any)}>
               {INDUSTRIES.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
@@ -629,6 +879,18 @@ export default function Page() {
               ))}
             </select>
           </label>
+
+          {industry === "Custom" && (
+            <label style={{ display: "grid", gap: 6 }}>
+              Custom industry name
+              <input
+                type="text"
+                placeholder="e.g., Electronics, Home Decor, Automotive..."
+                value={industryCustom}
+                onChange={(e) => setIndustryCustom(e.target.value)}
+              />
+            </label>
+          )}
 
           <label style={{ display: "grid", gap: 6 }}>
             Marketing objective
@@ -660,7 +922,11 @@ export default function Page() {
             Brand description (optional)
             <input
               type="text"
-              placeholder={`modern, credible brand in the ${industry} space`}
+              placeholder={`modern, credible brand in the ${
+                industry === "Custom" && industryCustom.trim()
+                  ? industryCustom.trim()
+                  : industry
+              } space`}
               value={brandDescription}
               onChange={(e) => setBrandDescription(e.target.value)}
             />
