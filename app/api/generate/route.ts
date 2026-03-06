@@ -1,50 +1,10 @@
 import { NextResponse } from "next/server";
+import { fetchToBuffer, pollResult, toBase64 } from "@/lib/lib/bfl";
 
 export const runtime = "nodejs";
 
-function toBase64(buffer: Buffer) {
-  return buffer.toString("base64");
-}
-
-async function fetchToBuffer(url: string) {
-  const cleanedUrl = url.replace(/%22$/g, "");
-  const imgResp = await fetch(cleanedUrl);
-  if (!imgResp.ok) {
-    const txt = await imgResp.text();
-    throw new Error(`Failed to fetch image: ${imgResp.status} ${txt}`);
-  }
-  const arrayBuf = await imgResp.arrayBuffer();
-  return Buffer.from(arrayBuf);
-}
-
-async function pollResult(pollingUrl: string, apiKey: string, timeoutMs = 120_000) {
-  const start = Date.now();
-
-  while (true) {
-    if (Date.now() - start > timeoutMs) throw new Error("Timed out waiting for BFL result");
-
-    const r = await fetch(pollingUrl, {
-      method: "GET",
-      headers: { accept: "application/json", "x-key": apiKey },
-      cache: "no-store",
-    });
-
-    if (!r.ok) {
-      const txt = await r.text();
-      throw new Error(`Polling failed: ${r.status} ${txt}`);
-    }
-
-    const data = await r.json();
-
-    if (data?.status === "Ready" && data?.result?.sample) return data.result.sample as string;
-    if (data?.status === "Task not found") throw new Error("Task not found (expired/wrong host). Re-run generation.");
-
-    await new Promise((res) => setTimeout(res, 1200));
-  }
-}
-
 export async function POST(req: Request) {
-  const apiKey = process.env.BFL_API_KEY;
+  const apiKey = process.env.BFL_GENERATE_API_KEY || process.env.BFL_API_KEY;
   const baseUrl = process.env.BFL_BASE_URL || "https://api.us2.bfl.ai";
   const modelPath = process.env.BFL_MODEL_PATH || "/v1/flux-2-pro";
 

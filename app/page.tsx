@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const DEFAULT_PROMPT = `Create a high-end, photorealistic, production-ready commercial product image using the attached product image as the base.
 
@@ -14,7 +14,77 @@ Do not distort the product or logo.
 Avoid cartoon/illustration/CGI/mockup-style results.
 No blur, no low resolution, no stylization.`;
 
+const TRANSLATION_PROMPT = `Task: Translate the advertisement text into {{TARGET_LANGUAGE}}.
+
+Instruction:
+Replace every piece of visible text with its {{TARGET_LANGUAGE}} translation.
+
+Design Preservation:
+Keep the advertisement visually identical and preserve the exact:
+- layout and composition
+- typography style, font weight, and font size
+- line breaks and spacing
+- alignment and positioning
+- colors
+- logo placement
+- product placement
+- graphics, images, and background design
+
+The final result should look identical to the original advertisement, with the only difference being that the text appears in {{TARGET_LANGUAGE}}.`;
+
+const DEFAULT_LANGUAGES = [
+  "English",
+  "Spanish",
+  "Hindi",
+  "French",
+  "German",
+  "Portuguese",
+  "Arabic",
+  "Chinese (Simplified)",
+  "Japanese",
+  "Korean",
+];
+
+function normalizeLanguage(value: string, canonical: string[]) {
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+
+  const canonicalMatch = canonical.find((lang) => lang.toLowerCase() === trimmed.toLowerCase());
+  if (canonicalMatch) return canonicalMatch;
+
+  const lower = trimmed.toLowerCase();
+  return lower.replace(/(^|[\s(])([a-z])/g, (m, prefix, ch) => `${prefix}${ch.toUpperCase()}`);
+}
+
+function uniqueLanguages(values: string[], canonical: string[]) {
+  const normalized = values
+    .map((value) => normalizeLanguage(value, canonical))
+    .filter(Boolean);
+
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+
+  for (const lang of normalized) {
+    const key = lang.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(lang);
+  }
+
+  return deduped;
+}
+
+async function detectImageSize(url: string): Promise<{ width: number; height: number } | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
 export default function Page() {
+  const [mode, setMode] = useState<"generate" | "translate">("generate");
   const [baseMode, setBaseMode] = useState<"upload" | "search">("upload");
   const [base, setBase] = useState<File | null>(null);
   const [baseUrl, setBaseUrl] = useState<string | null>(null);
@@ -26,6 +96,7 @@ export default function Page() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const [translationPrompt, setTranslationPrompt] = useState(TRANSLATION_PROMPT);
   const [width, setWidth] = useState(1024);
   const [height, setHeight] = useState(1024);
 
@@ -35,6 +106,10 @@ export default function Page() {
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [translateLoading, setTranslateLoading] = useState(false);
+  const [translationResults, setTranslationResults] = useState<
+    Array<{ language: string; sampleUrl?: string; error?: string }>
+  >([]);
 
   const [baseKeyword, setBaseKeyword] = useState("logo.png");
   const [baseSearching, setBaseSearching] = useState(false);
@@ -51,6 +126,17 @@ export default function Page() {
   const [logoResults, setLogoResults] = useState<
     Array<{ id: string; name: string; mediaUrl: string; previewUrl?: string }>
   >([]);
+
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["English"]);
+  const [customLanguages, setCustomLanguages] = useState("");
+
+  const allLanguages = useMemo(() => {
+    const custom = customLanguages
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return uniqueLanguages([...selectedLanguages, ...custom], DEFAULT_LANGUAGES);
+  }, [customLanguages, selectedLanguages]);
 
   async function runSearch(
     kind: "base" | "reference" | "logo",
@@ -118,8 +204,44 @@ export default function Page() {
     }
   }
 
-  async function uploadToSprinklr() {
-    if (!sampleUrl) return;
+  async function translate() {
+    setError(null);
+    setTranslationResults([]);
+    setUploadResult(null);
+    setUploadError(null);
+
+    if (baseMode === "upload") {
+      if (!base) return setError("Please upload the advertisement image.");
+    } else {
+      if (!baseUrl) return setError("Please select an advertisement image from search.");
+    }
+
+    if (!allLanguages.length) return setError("Please select at least one language.");
+
+    setTranslateLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append("prompt", translationPrompt);
+      fd.append("width", String(width));
+      fd.append("height", String(height));
+      fd.append("languages", JSON.stringify(allLanguages));
+      if (baseMode === "upload") fd.append("base", base as File);
+      else fd.append("base_url", baseUrl as string);
+
+      const r = await fetch("/api/translate", { method: "POST", body: fd });
+      const data = await r.json();
+
+      if (!r.ok) setError(data?.error || "Translation failed");
+      else setTranslationResults(Array.isArray(data?.results) ? data.results : []);
+    } catch (e: any) {
+      setError(e?.message || "Unexpected error");
+    } finally {
+      setTranslateLoading(false);
+    }
+  }
+
+  async function uploadToSprinklr(imageUrl: string, language?: string) {
+    if (!imageUrl) return;
     setUploadError(null);
     setUploadResult(null);
     setUploading(true);
@@ -127,7 +249,11 @@ export default function Page() {
       const up = await fetch("/api/image-upload", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imageUrl: sampleUrl, name: "Generated Image", description: "Generated by BFL" }),
+        body: JSON.stringify({
+          imageUrl,
+          name: language ? `Generated Image - ${language}` : "Generated Image",
+          description: language ? "Generated by BFL (Translation)" : "Generated by BFL",
+        }),
       });
       const upData = await up.json();
       if (!up.ok) setUploadError(upData?.error || "Upload failed");
@@ -152,6 +278,39 @@ export default function Page() {
           Uploaded to Sprinklr. Content ID: {String(uploadResult?.uploadedContentId || "")}
         </div>
       )}
+
+      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
+        <div style={{ fontWeight: 700 }}>Mode</div>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            type="radio"
+            name="mode"
+            checked={mode === "generate"}
+            onChange={() => {
+              setMode("generate");
+              setError(null);
+              setTranslationResults([]);
+              setPrompt(DEFAULT_PROMPT);
+            }}
+          />
+          Ad Generation
+        </label>
+        <label style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            type="radio"
+            name="mode"
+            checked={mode === "translate"}
+            onChange={() => {
+              setMode("translate");
+              setError(null);
+              setSampleUrl(null);
+              setTranslationResults([]);
+              setTranslationPrompt(TRANSLATION_PROMPT);
+            }}
+          />
+          Ad Translation
+        </label>
+      </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 8 }}>
         <div style={{ fontWeight: 700 }}>Base image source</div>
@@ -181,11 +340,33 @@ export default function Page() {
         </label>
       </div>
 
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr 1fr" }}>
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: mode === "translate" ? "1fr" : "1fr 1fr 1fr",
+        }}
+      >
         <div>
-          <div style={{ fontWeight: 700 }}>Base product image *</div>
+          <div style={{ fontWeight: 700 }}>{mode === "translate" ? "Advertisement image *" : "Base product image *"}</div>
           {baseMode === "upload" ? (
-            <input type="file" accept="image/*" onChange={(e) => setBase(e.target.files?.[0] || null)} />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const file = e.target.files?.[0] || null;
+                setBase(file);
+                if (file) {
+                  const objectUrl = URL.createObjectURL(file);
+                  const size = await detectImageSize(objectUrl);
+                  URL.revokeObjectURL(objectUrl);
+                  if (size) {
+                    setWidth(size.width);
+                    setHeight(size.height);
+                  }
+                }
+              }}
+            />
           ) : (
             <div style={{ display: "flex", gap: 8 }}>
               <input
@@ -208,6 +389,7 @@ export default function Page() {
           )}
         </div>
 
+        {mode === "generate" && (
         <div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <div style={{ fontWeight: 700 }}>Style reference (optional)</div>
@@ -265,7 +447,9 @@ export default function Page() {
             </div>
           )}
         </div>
+        )}
 
+        {mode === "generate" && (
         <div>
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <div style={{ fontWeight: 700 }}>Logo (optional)</div>
@@ -317,6 +501,7 @@ export default function Page() {
             </div>
           )}
         </div>
+        )}
       </div>
 
       {baseMode === "search" && baseResults.length > 0 && (
@@ -326,7 +511,14 @@ export default function Page() {
             {baseResults.map((asset) => (
               <button
                 key={asset.id}
-                onClick={() => setBaseUrl(asset.mediaUrl)}
+                onClick={async () => {
+                  setBaseUrl(asset.mediaUrl);
+                  const size = await detectImageSize(asset.mediaUrl);
+                  if (size) {
+                    setWidth(size.width);
+                    setHeight(size.height);
+                  }
+                }}
                 style={{
                   border: baseUrl === asset.mediaUrl ? "2px solid #111" : "1px solid #ddd",
                   padding: 6,
@@ -355,7 +547,7 @@ export default function Page() {
         </div>
       )}
 
-      {referenceMode === "search" && referenceResults.length > 0 && (
+      {mode === "generate" && referenceMode === "search" && referenceResults.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Reference search results</div>
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(4, 1fr)" }}>
@@ -383,7 +575,7 @@ export default function Page() {
         </div>
       )}
 
-      {referenceMode === "search" && referenceUrl && (
+      {mode === "generate" && referenceMode === "search" && referenceUrl && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Selected reference image</div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -391,7 +583,7 @@ export default function Page() {
         </div>
       )}
 
-      {logoMode === "search" && logoResults.length > 0 && (
+      {mode === "generate" && logoMode === "search" && logoResults.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Logo search results</div>
           <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(4, 1fr)" }}>
@@ -419,7 +611,7 @@ export default function Page() {
         </div>
       )}
 
-      {logoMode === "search" && logoUrl && (
+      {mode === "generate" && logoMode === "search" && logoUrl && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Selected logo image</div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -448,24 +640,75 @@ export default function Page() {
           />
         </label>
 
-        <button
-          onClick={generate}
-          disabled={loading}
-          style={{ marginLeft: "auto", padding: "10px 16px", fontWeight: 800, cursor: "pointer" }}
-        >
-          {loading ? "Generating..." : "Generate"}
-        </button>
+        {mode === "generate" ? (
+          <button
+            onClick={generate}
+            disabled={loading}
+            style={{ marginLeft: "auto", padding: "10px 16px", fontWeight: 800, cursor: "pointer" }}
+          >
+            {loading ? "Generating..." : "Generate"}
+          </button>
+        ) : (
+          <button
+            onClick={translate}
+            disabled={translateLoading}
+            style={{ marginLeft: "auto", padding: "10px 16px", fontWeight: 800, cursor: "pointer" }}
+          >
+            {translateLoading ? "Translating..." : "Translate"}
+          </button>
+        )}
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        <div style={{ fontWeight: 800, marginBottom: 6 }}>Prompt</div>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          rows={12}
-          style={{ width: "100%", padding: 10 }}
-        />
-      </div>
+      {mode === "generate" ? (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>Prompt</div>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            rows={12}
+            style={{ width: "100%", padding: 10 }}
+          />
+        </div>
+      ) : (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>Languages</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
+            {DEFAULT_LANGUAGES.map((lang) => (
+              <label key={lang} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={selectedLanguages.includes(lang)}
+                  onChange={(e) => {
+                    setSelectedLanguages((prev) =>
+                      e.target.checked ? [...prev, lang] : prev.filter((l) => l !== lang)
+                    );
+                  }}
+                />
+                {lang}
+              </label>
+            ))}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontWeight: 700, marginBottom: 6 }}>Other languages (comma-separated)</div>
+            <input
+              type="text"
+              value={customLanguages}
+              onChange={(e) => setCustomLanguages(e.target.value)}
+              placeholder="e.g. Italian, Turkish"
+              style={{ width: "100%", padding: 8 }}
+            />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 800, marginBottom: 6 }}>Translation Prompt</div>
+            <textarea
+              value={translationPrompt}
+              onChange={(e) => setTranslationPrompt(e.target.value)}
+              rows={12}
+              style={{ width: "100%", padding: 10 }}
+            />
+          </div>
+        </div>
+      )}
 
       {error && (
         <div style={{ marginTop: 12, padding: 12, background: "#ffecec", color: "#8a1f1f" }}>
@@ -473,7 +716,7 @@ export default function Page() {
         </div>
       )}
 
-      {sampleUrl && (
+      {mode === "generate" && sampleUrl && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontWeight: 900, marginBottom: 8 }}>Result</div>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
@@ -484,7 +727,7 @@ export default function Page() {
               Regenerate
             </button>
             <button
-              onClick={uploadToSprinklr}
+              onClick={() => uploadToSprinklr(sampleUrl)}
               disabled={uploading}
               style={{ padding: "6px 10px", cursor: "pointer" }}
             >
@@ -493,6 +736,46 @@ export default function Page() {
           </div>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={sampleUrl} alt="Generated result" style={{ width: "100%", border: "1px solid #ddd" }} />
+        </div>
+      )}
+
+      {mode === "translate" && translationResults.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontWeight: 900, marginBottom: 8 }}>Translation Results</div>
+          <div style={{ display: "grid", gap: 12 }}>
+            {translationResults.map((result) => (
+              <div key={result.language} style={{ border: "1px solid #ddd", padding: 10 }}>
+                <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
+                  <div style={{ fontWeight: 800 }}>{result.language}</div>
+                  {result.sampleUrl && (
+                    <a href={result.sampleUrl} target="_blank" rel="noreferrer">
+                      Open full image
+                    </a>
+                  )}
+                  {result.sampleUrl && (
+                    <button
+                      onClick={() => uploadToSprinklr(result.sampleUrl as string, result.language)}
+                      disabled={uploading}
+                      style={{ padding: "6px 10px", cursor: "pointer", marginLeft: "auto" }}
+                    >
+                      {uploading ? "Uploading..." : "Upload to Sprinklr"}
+                    </button>
+                  )}
+                </div>
+                {result.error && (
+                  <div style={{ padding: 10, background: "#ffecec", color: "#8a1f1f" }}>{result.error}</div>
+                )}
+                {result.sampleUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={result.sampleUrl}
+                    alt={`Translated result ${result.language}`}
+                    style={{ width: "100%", border: "1px solid #ddd" }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </main>
