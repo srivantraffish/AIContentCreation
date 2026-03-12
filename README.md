@@ -1,22 +1,34 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## Run Note
+
+Install dependencies and start the dev server:
+
+```bash
+npm install
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+Required local env values live in `.env.local`. For translation mode, make sure these are set:
+
+- `OPENAI_API_KEY`
+- `BFL_TRANSLATE_API_KEY`
+- `BFL_TRANSLATE_BASE_URL`
+- `BFL_TRANSLATE_MODEL_PATH`
+- `BFL_TRANSLATE_GUIDANCE`
+- `BFL_TRANSLATE_STEPS`
+
+Current translation flow:
+
+1. OpenAI extracts visible ad text and returns normalized source-to-translation mappings.
+2. BFL `flux-2-flex` edits the full image using those mappings.
+3. The UI shows the translated image plus an `OpenAI debug output` section for the mappings.
+
+If `.env.local` changes while the app is running, restart `npm run dev`.
 
 ## Getting Started
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
