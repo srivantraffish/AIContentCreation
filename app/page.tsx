@@ -14,24 +14,6 @@ Do not distort the product or logo.
 Avoid cartoon/illustration/CGI/mockup-style results.
 No blur, no low resolution, no stylization.`;
 
-const TRANSLATION_PROMPT = `Task: Translate the advertisement text into {{TARGET_LANGUAGE}}.
-
-Instruction:
-Replace every piece of visible text with its {{TARGET_LANGUAGE}} translation.
-
-Design Preservation:
-Keep the advertisement visually identical and preserve the exact:
-- layout and composition
-- typography style, font weight, and font size
-- line breaks and spacing
-- alignment and positioning
-- colors
-- logo placement
-- product placement
-- graphics, images, and background design
-
-The final result should look identical to the original advertisement, with the only difference being that the text appears in {{TARGET_LANGUAGE}}.`;
-
 const DEFAULT_LANGUAGES = [
   "English",
   "Spanish",
@@ -44,6 +26,25 @@ const DEFAULT_LANGUAGES = [
   "Japanese",
   "Korean",
 ];
+
+type TranslationMapping = {
+  order: number;
+  source_text: string;
+  translated_text: string;
+  box?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+};
+
+type TranslationResult = {
+  language: string;
+  sampleUrl?: string;
+  error?: string;
+  mappings?: TranslationMapping[];
+};
 
 function normalizeLanguage(value: string, canonical: string[]) {
   const trimmed = value.trim().replace(/\s+/g, " ");
@@ -96,7 +97,6 @@ export default function Page() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
-  const [translationPrompt, setTranslationPrompt] = useState(TRANSLATION_PROMPT);
   const [width, setWidth] = useState(1024);
   const [height, setHeight] = useState(1024);
 
@@ -107,9 +107,7 @@ export default function Page() {
   const [uploadResult, setUploadResult] = useState<any | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [translateLoading, setTranslateLoading] = useState(false);
-  const [translationResults, setTranslationResults] = useState<
-    Array<{ language: string; sampleUrl?: string; error?: string }>
-  >([]);
+  const [translationResults, setTranslationResults] = useState<TranslationResult[]>([]);
 
   const [baseKeyword, setBaseKeyword] = useState("logo.png");
   const [baseSearching, setBaseSearching] = useState(false);
@@ -221,9 +219,6 @@ export default function Page() {
     setTranslateLoading(true);
     try {
       const fd = new FormData();
-      fd.append("prompt", translationPrompt);
-      fd.append("width", String(width));
-      fd.append("height", String(height));
       fd.append("languages", JSON.stringify(allLanguages));
       if (baseMode === "upload") fd.append("base", base as File);
       else fd.append("base_url", baseUrl as string);
@@ -232,7 +227,7 @@ export default function Page() {
       const data = await r.json();
 
       if (!r.ok) setError(data?.error || "Translation failed");
-      else setTranslationResults(Array.isArray(data?.results) ? data.results : []);
+      else setTranslationResults(Array.isArray(data?.results) ? (data.results as TranslationResult[]) : []);
     } catch (e: any) {
       setError(e?.message || "Unexpected error");
     } finally {
@@ -305,7 +300,6 @@ export default function Page() {
               setError(null);
               setSampleUrl(null);
               setTranslationResults([]);
-              setTranslationPrompt(TRANSLATION_PROMPT);
             }}
           />
           Ad Translation
@@ -620,25 +614,29 @@ export default function Page() {
       )}
 
       <div style={{ display: "flex", gap: 12, marginTop: 12, alignItems: "center" }}>
-        <label>
-          Width{" "}
-          <input
-            type="number"
-            value={width}
-            onChange={(e) => setWidth(Number(e.target.value))}
-            style={{ width: 110 }}
-          />
-        </label>
+        {mode === "generate" && (
+          <label>
+            Width{" "}
+            <input
+              type="number"
+              value={width}
+              onChange={(e) => setWidth(Number(e.target.value))}
+              style={{ width: 110 }}
+            />
+          </label>
+        )}
 
-        <label>
-          Height{" "}
-          <input
-            type="number"
-            value={height}
-            onChange={(e) => setHeight(Number(e.target.value))}
-            style={{ width: 110 }}
-          />
-        </label>
+        {mode === "generate" && (
+          <label>
+            Height{" "}
+            <input
+              type="number"
+              value={height}
+              onChange={(e) => setHeight(Number(e.target.value))}
+              style={{ width: 110 }}
+            />
+          </label>
+        )}
 
         {mode === "generate" ? (
           <button
@@ -698,14 +696,9 @@ export default function Page() {
               style={{ width: "100%", padding: 8 }}
             />
           </div>
-          <div style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 800, marginBottom: 6 }}>Translation Prompt</div>
-            <textarea
-              value={translationPrompt}
-              onChange={(e) => setTranslationPrompt(e.target.value)}
-              rows={12}
-              style={{ width: "100%", padding: 10 }}
-            />
+          <div style={{ marginTop: 12, padding: 12, background: "#f5f5f5", color: "#333", border: "1px solid #ddd" }}>
+            Translation mode uses OpenAI to extract and translate visible text, then sends the normalized replacements to
+            BFL. Inspect the OpenAI debug output in each translation result to see the exact mappings used.
           </div>
         </div>
       )}
@@ -764,6 +757,26 @@ export default function Page() {
                 </div>
                 {result.error && (
                   <div style={{ padding: 10, background: "#ffecec", color: "#8a1f1f" }}>{result.error}</div>
+                )}
+                {result.mappings && (
+                  <details style={{ marginBottom: 10 }}>
+                    <summary style={{ cursor: "pointer", fontWeight: 700 }}>
+                      OpenAI debug output ({result.mappings.length} mapping{result.mappings.length === 1 ? "" : "s"})
+                    </summary>
+                    <div
+                      style={{
+                        marginTop: 8,
+                        border: "1px solid #e2e2e2",
+                        background: "#f8f8f8",
+                        padding: 10,
+                        overflowX: "auto",
+                      }}
+                    >
+                      <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 12 }}>
+                        {JSON.stringify(result.mappings, null, 2)}
+                      </pre>
+                    </div>
+                  </details>
                 )}
                 {result.sampleUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
