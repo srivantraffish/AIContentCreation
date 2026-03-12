@@ -31,13 +31,8 @@ const INDUSTRY_VISUAL_STYLE: Record<(typeof INDUSTRIES)[number], string> = {
 const MARKETING_OBJECTIVES = [
   "Launch",
   "Discount/Offer",
-<<<<<<< Updated upstream
-  "Premium positioning",
-  "Lifestyle branding",
-=======
   "Premium Positioning",
   "Lifestyle Branding",
->>>>>>> Stashed changes
   "Awareness",
   "Custom objective…",
 ] as const;
@@ -70,162 +65,7 @@ function buildPrompt(params: {
   const tone = params.tone?.trim() || DEFAULT_TONE;
   const primaryHex = params.brandPrimaryHex?.trim() || "";
   const accentHex = params.brandAccentHex?.trim() || "";
-  const objectiveTranslations: Record<string, string> = {
-    Launch: "Launch → dramatic lighting consistent with reference lighting logic.",
-    "Discount/Offer": "Discount/Offer → contrast adjustments while preserving original layout structure.",
-    "Premium positioning": "Premium positioning → refined lighting without altering composition.",
-    "Lifestyle branding": "Lifestyle branding → contextual realism while maintaining structural alignment.",
-    Awareness: "Awareness → emotional tone layered onto the same visual framework.",
-  };
-  const objectiveLine =
-    objectiveTranslations[params.marketingObjective] ||
-    `Custom objective → ${params.marketingObjective}`;
 
-<<<<<<< Updated upstream
-  return `Create a high-end commercial advertising image featuring the EXACT product from the provided product image as the clear hero.
-
-The product must remain unchanged:
-
-Preserve original shape, proportions, materials, label design, and structure.
-
-Do not redesign, modify, duplicate, reinterpret, stylize, or enhance the product in any way.
-
-The product must visually match the reference product with near-photographic accuracy.
-
-Only one primary product unless naturally part of packaging.
-
-Marketing Objective: ${params.marketingObjective}
-
-Visually communicate this objective through lighting, composition, scale, and mood — not through heavy text.
-
-Industry: ${params.industry}
-Brand description (optional): ${brandDescription}
-Tone (optional): ${tone}
-
-INDUSTRY VISUAL DIRECTION:
-${INDUSTRY_VISUAL_STYLE[params.industry]}
-
-Ensure the environment feels authentic to the industry and aligned with the marketing objective.
-
-REFERENCE IMAGE USAGE RULES:
-
-The generated image must closely replicate the reference image’s:
-
-Camera angle
-
-Perspective
-
-Focal length feel
-
-Framing
-
-Subject placement
-
-Spatial proportions
-
-Lighting direction and intensity
-
-Shadow behavior
-
-Depth of field
-
-Background structure
-
-Overall composition geometry
-
-Treat the reference image as a structural blueprint.
-
-Use the reference image strictly for:
-
-Composition balance
-
-Framing
-
-Lighting direction
-
-Depth structure
-
-Do NOT alter:
-
-The core layout logic
-
-The product’s visual characteristics
-
-Relative scale relationships
-
-Do NOT copy:
-
-Objects (unless part of the original product image)
-
-Text
-
-Props
-
-People
-
-Specific identifiable scenery elements
-
-Create a scene that mirrors the structural DNA of the reference image while remaining legally distinct in environmental details.
-
-COMPOSITION & AD STRUCTURE:
-
-Strong visual hierarchy: product first, environment supporting.
-
-Clear focal point identical in emphasis to reference.
-
-Professional commercial photography quality.
-
-Intentional negative space for headline placement (matching reference positioning).
-
-Layout optimized for ${params.layoutMode} format.
-
-Safe margins for cropping in digital advertising.
-
-Balanced framing appropriate for paid ad usage.
-
-Maintain near-identical compositional ratios and subject placement as reference.
-
-OBJECTIVE-BASED VISUAL TRANSLATION:
-
-${objectiveLine}
-
-Adapt visual storytelling without changing structural composition.
-
-LOGO INTEGRATION:
-
-Integrate the provided logo naturally and realistically:
-
-On packaging
-
-Embossed
-
-Subtle corner lockup
-
-Label integration
-
-The logo must align precisely with lighting, perspective, and surface geometry of the scene.
-
-COLOR & FINISH:
-
-Use brand colors subtly if provided: ${primaryHex || "N/A"}, ${accentHex || "N/A"}
-
-Match the reference image’s:
-
-Color temperature
-
-Contrast profile
-
-Exposure balance
-
-Highlight rolloff
-
-Shadow density
-
-Professional commercial color grading aligned with ${tone}
-
-FINAL OUTPUT REQUIREMENTS:
-
-=======
   const objectiveTranslation =
     OBJECTIVE_TRANSLATIONS[params.marketingObjective] ||
     `Apply objective-driven visual translation aligned with "${params.marketingObjective}".`;
@@ -237,9 +77,9 @@ FINAL OUTPUT REQUIREMENTS:
     INDUSTRY_VISUAL_STYLE[params.industry] || DEFAULT_INDUSTRY_VISUAL_STYLE;
 
   return `Use the provided reference image as the PRIMARY structural blueprint.
- 
-The generated image must closely replicate the reference image’s:
- 
+
+The generated image must closely replicate the reference image's:
+
 - Camera angle
 - Perspective
 - Framing
@@ -250,102 +90,92 @@ The generated image must closely replicate the reference image’s:
 - Shadow behavior
 - Background structure
 - Overall composition geometry
- 
+
 Maintain near-identical compositional ratios and layout balance.
- 
+
 Recreate the same scene structure shown in the reference image, replacing only the subject.
- 
+
 Do not alter the core layout logic.
- 
+
 --------------------------------------------------
- 
+
 Now replace the original subject with the EXACT product from the provided product image.
- 
+
 The product must remain unchanged:
 - Preserve original shape, proportions, materials, label design, and structure.
 - Do not redesign, stylize, reinterpret, enhance, or duplicate the product.
 - Only one primary product unless naturally part of packaging.
- 
+
 The product must occupy the same compositional role, scale, and visual emphasis as the subject in the reference image.
- 
+
 --------------------------------------------------
- 
+
 Marketing Objective: {{MARKETING_OBJECTIVE}}
- 
+
 Visually communicate this objective through lighting intensity, atmosphere, and styling — WITHOUT altering the structural composition derived from the reference image.
- 
+
 --------------------------------------------------
- 
+
 Industry: {{INDUSTRY}}
- 
+
 Brand Description (optional): {{BRAND_DESCRIPTION}}
- 
+
 Tone (optional): {{TONE_OR_DEFAULT_PREMIUM}}
- 
+
 --------------------------------------------------
- 
+
 Industry Visual Direction:
 ${industryVisualStyle}
- 
+
 Ensure styling, materials, and environment details reflect the industry while respecting the reference composition.
- 
+
 Do not allow industry styling to override layout structure.
- 
+
 --------------------------------------------------
- 
+
 Layout Format:
 {{LAYOUT_MODE}} (e.g., 1:1, 4:5, 16:9)
- 
+
 Maintain safe margins for digital advertising placement.
- 
+
 --------------------------------------------------
- 
+
 Logo Integration:
- 
+
 Integrate the provided logo naturally within the structural constraints of the reference layout.
- 
+
 Logo must align with scene lighting, surface geometry, and perspective.
 Avoid floating or pasted appearance.
- 
+
 --------------------------------------------------
- 
+
 Color & Finish:
- 
+
 If provided, use brand colors subtly:
 Primary: {{BRAND_PRIMARY_HEX}}
 Accent: {{BRAND_ACCENT_HEX}}
- 
-Match the reference image’s:
+
+Match the reference image's:
 - Color temperature
 - Contrast profile
 - Exposure balance
 - Highlight rolloff
 - Shadow density
- 
+
 Professional commercial color grading aligned with {{TONE_OR_DEFAULT_PREMIUM}}.
- 
+
 --------------------------------------------------
- 
+
 Final Output Requirements:
- 
->>>>>>> Stashed changes
+
 Ultra-realistic
 High resolution
 Structurally aligned with reference image
 Accurate product representation
 Premium commercial photography quality
 Clean composition
-<<<<<<< Updated upstream
-Natural shadows
-Realistic reflections
-No visual artifacts
-Premium advertising finish
-Maximum structural similarity to the reference image
-Suitable for paid digital campaigns`;
-=======
 Natural shadows and reflections
 Suitable for paid digital advertising`;
->>>>>>> Stashed changes
 }
 
 export default function Page() {
@@ -506,7 +336,26 @@ export default function Page() {
       const data = await r.json();
 
       if (!r.ok) setError(data?.error || "Generation failed");
-      else setSampleUrl(data.sampleUrl);
+      else {
+        setSampleUrl(data.sampleUrl);
+        if (data?.sampleUrl) {
+          setUploading(true);
+          try {
+            const up = await fetch("/api/image-upload", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ imageUrl: data.sampleUrl, name: "Generated Image", description: "Generated by BFL" }),
+            });
+            const upData = await up.json();
+            if (!up.ok) setUploadError(upData?.error || "Upload failed");
+            else setUploadResult(upData);
+          } catch (e: any) {
+            setUploadError(e?.message || "Unexpected upload error");
+          } finally {
+            setUploading(false);
+          }
+        }
+      }
     } catch (e: any) {
       setError(e?.message || "Unexpected error");
     } finally {
@@ -746,23 +595,14 @@ export default function Page() {
             {baseResults.map((asset) => (
               <button
                 key={asset.id}
-                onClick={() =>
-                  setBaseUrl((prev) => (prev === asset.mediaUrl ? null : asset.mediaUrl))
-                }
+                onClick={() => setBaseUrl(asset.mediaUrl)}
                 style={{
-                  border: baseUrl === asset.mediaUrl ? "2px solid #0a7a2a" : "1px solid #ddd",
+                  border: baseUrl === asset.mediaUrl ? "2px solid #111" : "1px solid #ddd",
                   padding: 6,
                   cursor: "pointer",
                   background: "white",
-                  position: "relative",
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={baseUrl === asset.mediaUrl}
-                  readOnly
-                  style={{ position: "absolute", top: 8, left: 8 }}
-                />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={asset.previewUrl || asset.mediaUrl}
@@ -773,6 +613,14 @@ export default function Page() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {baseMode === "search" && baseUrl && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>Selected base image</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={baseUrl} alt="Selected base" style={{ width: "100%", border: "1px solid #ddd" }} />
         </div>
       )}
 
@@ -783,23 +631,14 @@ export default function Page() {
             {referenceResults.map((asset) => (
               <button
                 key={asset.id}
-                onClick={() =>
-                  setReferenceUrl((prev) => (prev === asset.mediaUrl ? null : asset.mediaUrl))
-                }
+                onClick={() => setReferenceUrl(asset.mediaUrl)}
                 style={{
-                  border: referenceUrl === asset.mediaUrl ? "2px solid #0a7a2a" : "1px solid #ddd",
+                  border: referenceUrl === asset.mediaUrl ? "2px solid #111" : "1px solid #ddd",
                   padding: 6,
                   cursor: "pointer",
                   background: "white",
-                  position: "relative",
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={referenceUrl === asset.mediaUrl}
-                  readOnly
-                  style={{ position: "absolute", top: 8, left: 8 }}
-                />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={asset.previewUrl || asset.mediaUrl}
@@ -813,8 +652,6 @@ export default function Page() {
         </div>
       )}
 
-<<<<<<< Updated upstream
-=======
       {referenceMode === "search" && referenceUrl && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Selected reference image</div>
@@ -827,7 +664,6 @@ export default function Page() {
         </div>
       )}
 
->>>>>>> Stashed changes
       {logoMode === "search" && logoResults.length > 0 && (
         <div style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 800, marginBottom: 6 }}>Logo search results</div>
@@ -835,23 +671,14 @@ export default function Page() {
             {logoResults.map((asset) => (
               <button
                 key={asset.id}
-                onClick={() =>
-                  setLogoUrl((prev) => (prev === asset.mediaUrl ? null : asset.mediaUrl))
-                }
+                onClick={() => setLogoUrl(asset.mediaUrl)}
                 style={{
-                  border: logoUrl === asset.mediaUrl ? "2px solid #0a7a2a" : "1px solid #ddd",
+                  border: logoUrl === asset.mediaUrl ? "2px solid #111" : "1px solid #ddd",
                   padding: 6,
                   cursor: "pointer",
                   background: "white",
-                  position: "relative",
                 }}
               >
-                <input
-                  type="checkbox"
-                  checked={logoUrl === asset.mediaUrl}
-                  readOnly
-                  style={{ position: "absolute", top: 8, left: 8 }}
-                />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={asset.previewUrl || asset.mediaUrl}
@@ -862,6 +689,14 @@ export default function Page() {
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {logoMode === "search" && logoUrl && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>Selected logo image</div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="Selected logo" style={{ width: "100%", border: "1px solid #ddd" }} />
         </div>
       )}
 
